@@ -1,12 +1,11 @@
 import React, { Component, PropTypes } from 'react'
 import { Link } from 'react-router'
+require("./styles.less")
 
 
 class Home extends Component {
 
     render() {
-        console.info('[Home] render')
-
         let foo = 'bar'
 
         return <div className="home">
