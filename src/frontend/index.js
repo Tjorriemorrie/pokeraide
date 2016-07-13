@@ -1,21 +1,12 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import {Router, Route, IndexRoute, browserHistory} from 'react-router';
-import App from './app.jsx';
-import Home from './home.jsx';
+import rootRoute from './views'
 
-
-let routes = (
-    <Router>
-        <Route path="/" component={App}>
-            <IndexRoute component={Home} />
-        </Route>
-    </Router>
-);
 
 ReactDOM.render(
     <Router
-        routes={routes}
+        routes={rootRoute}
         history={browserHistory}
     />,
     document.getElementById('app')
