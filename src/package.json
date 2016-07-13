@@ -7,7 +7,7 @@
     "build": "webpack --progress --colors",
     "test": "mocha --compilers js:babel-core/register --require ignore-styles",
     "tests": "mocha -w -c --compilers js:babel-core/register --require ignore-styles frontend/test.js",
-    "dev": "webpack-dev-server --port 9898 --devtool eval --progress -c --content-base backend --hot --inline",
+    "dev": "npm run build && webpack-dev-server --port 9898 --devtool eval --progress -c --content-base backend --hot --inline",
     "prod": "webpack --progress -p -c --define process.env.NODE_ENV='\"production\"'"
   },
   "repository": {
