@@ -1,6 +1,6 @@
-//import modelSuite from './models'
+import modelSuite from './models/test'
 import viewSuite from './views/test'
 
 
-//modelSuite()
+modelSuite()
 viewSuite()
