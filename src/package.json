@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "build": "webpack --progress --colors",
-    "test": "mocha --compilers js:babel-core/register",
-    "tests": "mocha -w -c --compilers js:babel-core/register frontend/test.js",
+    "test": "mocha --compilers js:babel-core/register --require ignore-styles",
+    "tests": "mocha -w -c --compilers js:babel-core/register --require ignore-styles frontend/test.js",
     "dev": "webpack-dev-server --port 9898 --devtool eval --progress -c --content-base backend --hot --inline",
     "prod": "webpack --progress -p -c --define process.env.NODE_ENV='\"production\"'"
   },
@@ -41,6 +41,7 @@
     "cheerio": "^0.20.0",
     "css-loader": "^0.23.1",
     "enzyme": "^2.4.1",
+    "ignore-styles": "^4.0.0",
     "less": "^2.7.1",
     "less-loader": "^2.2.3",
     "mocha": "^2.5.3",
