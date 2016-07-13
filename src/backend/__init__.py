@@ -9,7 +9,7 @@ from flask import Flask
 app = Flask(__name__)
 
 # configuration
-app.config.from_object('app.config.Dev')
+app.config.from_object('backend.config.Dev')
 
 # database
 # app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://speler:spe1er@db:5432/musiek'
@@ -23,7 +23,7 @@ app.config.from_object('app.config.Dev')
 # app.json_encoder = AlchemyEncoder
 
 # load routing
-from app import views
+from backend import views
 
 # create manager
 # manager = Manager(app)
