@@ -14,7 +14,7 @@ const app = () => {
     describe('<App />', () => {
         let wrapper
         beforeEach(() => {
-            wrapper = shallow(<App />)
+            wrapper = shallow(<App children={<div/>} />)
         })
 
         it('renders', () => {

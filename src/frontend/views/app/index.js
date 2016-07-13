@@ -1,6 +1,6 @@
 import React, { Component, PropTypes } from 'react'
 import Navigation from './../navigation'
-require("./styles.less");
+require("./styles.less")
 
 
 class App extends Component {
@@ -8,7 +8,7 @@ class App extends Component {
     render() {
         let { children } = this.props
 
-        return <div className="background">
+        return <div>
             <Navigation />
             {children}
         </div>
