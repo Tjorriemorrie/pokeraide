@@ -1,9 +1,19 @@
 @import 'base';
 
 
-.flex-parent {
+.flexrow {
   display: flex;
   flex-flow: row nowrap;
+  align-items: stretch;
+
+  & > * {
+    flex: 1 1 auto;
+  }
+}
+
+.flexcol {
+  display: flex;
+  flex-flow: column nowrap;
   align-items: stretch;
 
   & > * {
