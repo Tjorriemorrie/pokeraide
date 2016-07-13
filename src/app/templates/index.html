@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>pokeraide</title>
+</head>
+
+<body>
+	<div id="app"></div>
+
+	{% block js %}
+    <script src="{{ 'http://localhost:9898' if config.DEBUG }}/static/build/pokeraide.js" type="text/javascript"></script>
+	{% endblock %}
+
+</body>
+</html>
