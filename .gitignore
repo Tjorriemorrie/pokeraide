@@ -63,3 +63,11 @@ target/
 
 # pycharm
 .idea/
+
+# node modules
+src/node_modules/
+
+# pyenv
+.python-version
+
+
