@@ -1,11 +1,13 @@
 import app from './app/test'
-//import footer from './footer'
-//import signup from './signup'
+import navigation from './navigation/test'
+import home from './home/test'
 
 
 const views = () => {
     describe('views', () => {
-        app()
+        app(),
+        navigation(),
+        home()
     })
 }
 
