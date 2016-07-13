@@ -25,13 +25,18 @@ const navigation = () => {
             expect(wrapper.find('IndexLink')).to.have.length(1)
         })
 
-        it('renders 1 links', () => {
-            expect(wrapper).to.have.exactly(1).descendants('div')
+        it('renders 2 links', () => {
+            expect(wrapper).to.have.exactly(2).descendants('div')
         })
 
         it('has link home', () => {
             expect(wrapper.findWhere(n => n.prop('to') == '/')).to.have.length(1)
             expect(wrapper.findWhere(n => n.prop('to') == '/')).to.have.html('<a>Home</a>')
+        })
+
+        it('has link play', () => {
+            expect(wrapper.findWhere(n => n.prop('to') == 'play')).to.have.length(1)
+            expect(wrapper.findWhere(n => n.prop('to') == 'play')).to.have.html('<a>Play</a>')
         })
 
     })

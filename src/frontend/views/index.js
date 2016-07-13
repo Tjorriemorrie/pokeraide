@@ -1,10 +1,6 @@
 import App from './app'
 import Home from './home'
-//import aboutRoute from './about'
-//import servicesRoute from './services'
-//import coursesRoute from './courses'
-//import resourcesRoute from './resources'
-//import contactRoute from './contact'
+import play from './play/route'
 require('normalize-css')
 
 
@@ -15,6 +11,7 @@ const route = {
         component: Home
     },
     childRoutes: [
+        play,
     ]
 }
 
