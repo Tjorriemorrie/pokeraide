@@ -1,10 +1,14 @@
-import { FB_STATUSES, SET_FB_STATUS } from './actions'
+import { CREATE_NEW_GAME } from './actions'
 
-
-      //return { ...state, visibilityFilter: action.filter }
 
 export const games = (state = [], action) => {
     switch (action.type) {
+        case CREATE_NEW_GAME:
+            state.push({
+                id: 'foo',
+                started_at: new Date(),
+            })
+            return state
         default:
             return state
     }

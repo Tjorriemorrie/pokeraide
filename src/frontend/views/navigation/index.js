@@ -8,7 +8,7 @@ class Navigation extends Component {
     render() {
         return <nav>
             <div><IndexLink activeClassName="active" to="/">Home</IndexLink></div>
-            <div><Link activeClassName="active" to="play">Play</Link></div>
+            <div><Link activeClassName="active" to="/play">Play</Link></div>
         </nav>
     }
 

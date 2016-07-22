@@ -35,8 +35,8 @@ const navigation = () => {
         })
 
         it('has link play', () => {
-            expect(wrapper.findWhere(n => n.prop('to') == 'play')).to.have.length(1)
-            expect(wrapper.findWhere(n => n.prop('to') == 'play')).to.have.html('<a>Play</a>')
+            expect(wrapper.findWhere(n => n.prop('to') == '/play')).to.have.length(1)
+            expect(wrapper.findWhere(n => n.prop('to') == '/play')).to.have.html('<a>Play</a>')
         })
 
     })

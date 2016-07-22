@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/Tjorriemorrie/pokeraide#readme",
   "dependencies": {
+    "lodash": "^4.13.1",
     "normalize-css": "^2.3.1",
     "react": "^15.2.1",
     "react-dom": "^15.2.1",

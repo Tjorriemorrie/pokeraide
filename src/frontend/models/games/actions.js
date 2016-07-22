@@ -1,21 +1,15 @@
 /**
  * Action types
  */
-export const SET_FB_STATUS = 'SET_FB_STATUS'
+export const CREATE_NEW_GAME = 'CREATE_NEW_GAME'
 
-
-export const FB_STATUSES = {
-    LOADING: 'loading',
-    DONE: 'done',
-}
 
 /**
  * Action creators
  */
 
-export const setFacebookStatus = (text) => {
+export const startGame = () => {
     return {
-        type: SET_FB_STATUS,
-        status: text,
+        type: CREATE_NEW_GAME,
     }
 }
