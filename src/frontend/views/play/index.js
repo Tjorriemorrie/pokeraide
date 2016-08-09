@@ -1,6 +1,7 @@
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 require("./styles.less")
+import { isEmpty } from 'lodash'
 import { startGame } from './../../models/games/actions'
 
 
@@ -23,9 +24,9 @@ export class Play extends Component {
                 <p>
                     <button onClick={() => startGame()}>New Game</button>
                     <span className="count">{games.length} games</span>
-                    {games.map(game => {
+                    {games.map((game, i) => {
                         return (
-                            <span>game!</span>
+                            <span key={i}>game!</span>
                         )
                     })}
                 </p>
@@ -34,9 +35,25 @@ export class Play extends Component {
     }
 
     renderMain() {
+        const { game } = this.props
+        if (isEmpty(game)) {
+            return null
+        }
+
+        console.info('game', game)
         return (
             <div className="main">
-                <p>main</p>
+                <p>ID: {game.id}</p>
+                <p>
+                    Actions:
+                    <button>deal</button>
+                    <button>add player</button>
+                </p>
+                {game.players.map((player, i) => {
+                    return (
+                        <p key={i}>player: {player.name}</p>
+                    )
+                })}
             </div>
         )
     }
@@ -44,6 +61,7 @@ export class Play extends Component {
 }
 
 Play.propTypes = {
+    game: PropTypes.object,
     games: PropTypes.array.isRequired,
     startGame: PropTypes.func.isRequired,
 }
@@ -51,6 +69,7 @@ Play.propTypes = {
 
 const mapStateToProps = (state, ownProps) => {
     return {
+        game: state.game,
         games: state.games,
     }
 }
