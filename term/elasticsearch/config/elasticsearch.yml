@@ -1,0 +1,6 @@
+network:
+  host: 0.0.0.0
+
+script:
+  inline: on
+  indexed: on

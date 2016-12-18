@@ -4,7 +4,7 @@ import os
 
 # extract
 data = {'players': {}}
-with tarfile.open("{}/tourney.199505.tgz".format(os.path.dirname(__file__))) as t:
+with tarfile.open("tourney.199505.tgz") as t:
 	for name in t.getnames():
 		if 'pdb/pdb.' in name:
 			data['players'][name.split('.')[-1]] = t.extractfile(t.getmember(name)).read().strip().split('\n')
