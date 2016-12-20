@@ -1,11 +1,12 @@
 from itertools import combinations, product
 import logging
+from operator import neg
 from os.path import dirname, realpath, join
 from random import random
 import shelve
-
-from poker_eval import PE
 from sortedcontainers import SortedDict
+
+from pe.pe import PE
 
 
 logger = logging.getLogger()
@@ -24,7 +25,7 @@ class PocketRankings:
     @classmethod
     def load(cls):
         """Loads from file and return in sorted dictionary"""
-        with shelve.open(self.FILE) as shlv:
+        with shelve.open(cls.FILE) as shlv:
             pockets_rankings = SortedDict(neg, shlv['pocket_rankings'])
             # for ps, pc in pockets_ranks.items():
             #     logger.info('{} = {}'.format(ps, pc))

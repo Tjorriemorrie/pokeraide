@@ -1,6 +1,5 @@
 import logging
 
-from pocket_rankings.pocket_rankings import PocketRankings
 
 
 if __name__ == '__main__':
@@ -8,8 +7,10 @@ if __name__ == '__main__':
         level=logging.DEBUG,
         format='%(asctime)s - %(levelname)-7s - [%(filename)s:%(funcName)s] %(message)s')
 
+    # from pocket_rankings.pocket_rankings import PocketRankings
     # PocketRankings.run()
 
-    # table = Table()
-    # table.run()
+    from table.table import Table
+    table = Table()
+    table.run()
 
