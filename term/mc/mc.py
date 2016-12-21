@@ -30,7 +30,7 @@ class MonteCarlo:
             logger.info('engine given')
             self.init(engine)
 
-    @retrace.retry(on_exception=EOFError, interval=0.1, limit=None)
+    @retrace.retry(on_exception=(EOFError, KeyError), interval=0.1, limit=None)
     def load_engine(self):
         with shelve.open(Engine.FILE) as shlv:
             if shlv['hash'] != self.ENGINE_CHECKSUM:
@@ -47,8 +47,9 @@ class MonteCarlo:
         logger.info('HERO is at seat {} with {}'.format(self.hero, self.hero_pocket))
 
         self.is_complete = False
+        self.convergence_size = 12
         self.convergence = {
-            'deq': deque(range(20), maxlen=20),
+            'deq': deque(maxlen=self.convergence_size),
         }
         self.watched = False
 
@@ -230,19 +231,18 @@ class MonteCarlo:
 
         # self.convergence['deq'].append(round(delta, 1))
         self.convergence['deq'].append(best_action)
+        # logger.error('deq: {}'.format(list(self.convergence['deq'])))
 
         logger.error('')
         logger.error('Timeout: {}'.format(round(self.TIMEOUT, 1)))
         logger.error('Traversed: {}'.format(sum_traversed))
-        # deq_list = list(self.convergence['deq'])
-        # logger.error('deq: {}'.format(deq_list))
         deq_cnts = Counter(list(self.convergence['deq']))
         # logger.error('deq: {}'.format(deq_cnts.most_common()))
 
         logger.error('{}% for {}'.format(
             # 100 * sum(dq == deq_list[-1] for dq in deq_list[:-1]) // (len(deq_list) - 1)
-            100 * (deq_cnts.most_common()[0][1] - deq_cnts.most_common()[1][1]) // len(self.convergence['deq'])
-            if len(deq_cnts) > 1 else 100,
+            100 * (deq_cnts.most_common()[0][1] - deq_cnts.most_common()[1][1]) // self.convergence_size
+            if len(deq_cnts) > 1 else 100 * len(self.convergence['deq']) // self.convergence_size,
             deq_cnts.most_common()[0][0]
         ))
 

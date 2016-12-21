@@ -7,6 +7,7 @@ from os.path import dirname, realpath, join
 import shelve
 
 from es.es import ES
+from pe.pe import PE
 
 
 logger = logging.getLogger()
@@ -94,9 +95,11 @@ class Engine:
 
     def save(self):
         """saves game. this state should be threadsafe"""
+        logger.info('saving engine state...')
         with shelve.open(self.FILE) as shlv:
             shlv['hash'] = json.dumps(self.data, sort_keys=True)
             shlv['engine'] = self
+        logger.info('engine state saved to {}'.format(self.FILE))
 
     def __copy__(self):
         cls = self.__class__
@@ -113,6 +116,7 @@ class Engine:
         return result
 
     def __repr__(self):
+        logger.debug('getting engine repr...')
         r = '{}:\n'.format(self.phase)
 
         r += 'Pot: {}\n'.format(self.pot)
@@ -123,6 +127,8 @@ class Engine:
         # self.pe.equities(self.data, self.board)
 
         pta = self.q[0][0] if self.q else 0
+        equities = PE.showdown_equities(self)
+        logger.debug('got equities for repr')
 
         for s, p in self.players.items():
             d = self.data[s]
@@ -148,13 +154,11 @@ class Engine:
             r += '{}\n'.format(pr)
 
             # add player stats
-            try:
-                if self.phase != self.PHASE_SHOWDOWN:
-                    d['stats'] = ES.player_stats(self, s)
-                    dist_stats = ES.dist_player_stats(d['stats']['actions'], d['strength'])
-                    r += '{:>63}\n\n'.format(dist_stats)
-            except Exception as e:
-                logger.exception(e)
+            if self.phase != self.PHASE_SHOWDOWN:
+                d['stats'] = ES.player_stats(self, s)
+                dist_stats = ES.dist_player_stats(d['stats']['actions'], d['strength'])
+                r += '{:>40}%'.format(int(equities[s] * 100))
+                r += '{:>21}\n\n'.format(dist_stats)
 
         return r
 
@@ -400,7 +404,7 @@ class Engine:
             return
 
         if self.mc and action[0] not in ['a', 'b', 'f', 'c', 'r', 'gg']:
-            raise Exception('bad action {} given to engine during MC'.format(action))
+            raise Exception('bad action {} given to engine'.format(action))
 
         if action[0] == 'h':
             hand = [action[2], action[3]] if len(action) > 2 else ['__', '__']
@@ -473,7 +477,12 @@ class Engine:
 
         # facing_aggro if contrib_short AND not limping during preflop
         could_limp = True if self.phase == self.PHASE_PREFLOP and max_contrib == self.bb_amt else False
-        faced_aggro = True if contrib_short and not could_limp else False
+        faced_aggro = False
+        pot_odds = None
+        if contrib_short and not could_limp:
+            balance_left = p['balance'] - d['contrib']
+            faced_aggro = True
+            pot_odds = min(balance_left, contrib_short) / (self.pot + total_contribs)
         logger.debug('faced_aggro? {}'.format(faced_aggro))
 
         if action[0] == 'f':
@@ -481,6 +490,7 @@ class Engine:
             d[self.phase].append({
                 'action': 'f',
                 'aggro': faced_aggro,
+                'pot_odds': pot_odds,
             })
             d['hand'] = ['  ', '  ']
             logger.debug('Did action fold')
@@ -514,6 +524,7 @@ class Engine:
                     'action': action[0],
                     'aggro': faced_aggro,
                     'bet_to_pot': bet_to_pot,
+                    'pot_odds': pot_odds,
                 })
                 d['contrib'] += int(action[1])
                 logger.debug('Did action bet/raise {}'.format(action[0]))
@@ -535,6 +546,7 @@ class Engine:
                 d[self.phase].append({
                     'action': action[0],
                     'aggro': faced_aggro,
+                    'pot_odds': pot_odds,
                 })
                 d['contrib'] += contrib_short
                 logger.debug('Did action {} (contrib: {})'.format(action[0], contrib_short))
@@ -545,6 +557,7 @@ class Engine:
             d[self.phase].append({
                 'action': 'a',
                 'aggro': faced_aggro,
+                'pot_odds': pot_odds,
             })
             d['status'] = 'allin'
             d['contrib'] = p['balance']

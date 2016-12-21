@@ -1,3 +1,4 @@
+import datetime
 import logging
 from os.path import dirname, realpath, join
 import shelve
@@ -52,6 +53,7 @@ class Game:
         logger.info('input = {}'.format(i))
         cmd = i.split(' ')
         self.engine.do(cmd)
+        logger.debug('input handled and done')
 
     def save_game(self):
         logger.info('saving game...')
@@ -65,12 +67,15 @@ class Game:
                         doc['{}_aggro'.format(phase)] = action_info['aggro']
                     if 'bet_to_pot' in action_info:
                         doc['{}_{}_btp'.format(phase, i+1)] = action_info['bet_to_pot']
+                    if action_info.get('pot_odds'):
+                        doc['{}_{}_po'.format(phase, i+1)] = action_info['pot_odds']
             if doc:
                 doc.update({
                     'player': self.engine.players[s]['name'],
                     'site': INDEX_NAME,
                     'game': game_id,
                     'vs': self.engine.vs,
+                    'created_at': datetime.datetime.utcnow(),
                 })
                 GameAction(**doc).save()
                 logger.info('saved {}'.format(doc))
