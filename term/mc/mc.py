@@ -118,7 +118,7 @@ class MonteCarlo:
         """
         logger.info('Monte Carlo started')
         time_start = time.time()
-        while not self.is_complete and time.time() - time_start < self.TIMEOUT or True:
+        while not self.is_complete and time.time() - time_start < self.TIMEOUT:
             self.is_complete = True
             leaves = self.tree.paths_to_leaves()
             logger.debug('leaves from tree: {}'.format(len(leaves)))
@@ -132,10 +132,10 @@ class MonteCarlo:
                 # input('>>')
                 # if random.random() < 0.001:
                 #     input('random check')
-                # if time.time() - time_start >= self.TIMEOUT:
-                #     logger.warn('time is up for processing!')
-                #     self.is_complete = False
-                #     break
+                if time.time() - time_start >= self.TIMEOUT:
+                    # logger.warn('time is up for processing!')
+                    self.is_complete = False
+                    break
         duration = time.time() - time_start
         self.show_best_action()
         logger.warn('Monte Carlo ended after taking {}s'.format(int(duration)))
@@ -157,7 +157,7 @@ class MonteCarlo:
         # logger.debug('fast forwarding to path {}'.format(args))
         self.fast_forward(e, path)
         logger.info('\n{}'.format('=' * 150))
-        input('check item')
+        # input('check item')
 
     def fast_forward(self, e, path):
         """Do actions on engine till the leaf is reached. Need to do available_actions before
@@ -335,30 +335,37 @@ class MonteCarlo:
         If leaf, then it was already calculated during processing, and now
         do not change it: the ev is the ev
 
-        If hero then MAX, else avg by stat/p for foes
+        Minimax applied, hero pick best and foe picks min after p
         """
         if not node.fpointer:
             # logger.debug('not updating {}: it iss final game result (no leaf nodes)'.format(node.tag))
             return
-
         logger.info('updating node {}'.format(node.tag))
-        n_ev = 0
+
+        is_hero = node.data['seat'] == self.hero
+        logger.debug('is hero? {}'.format(is_hero))
+
+        n_ev = float('-inf') if is_hero else float('inf')
         n_traversed = 0
         for child_nid in node.fpointer:
             child_node = self.tree[child_nid]
             dat = child_node.data
             if not dat['traversed']:
-                # logger.debug('{} skipping untraversed'.format(child_node.tag))
+                logger.debug('{} skipping untraversed'.format(child_node.tag))
                 continue
 
-            # if node.data['seat'] == self.hero:
-            #     n_ev = max(n_ev, dat['ev'])
-            # else:
-                # n_ev = min(n_ev, dat['ev'])
-            ev = dat['ev'] * dat['stats']
-            n_ev += ev
-            logger.debug('{} ev~{} from ev~{} * p~{}'.format(
-                child_node.tag, round(ev, 3), round(dat['ev'], 3), round(dat['stats'], 3)))
+            # get max for hero
+            if is_hero:
+                logger.debug('hero max between {} and {}'.format(n_ev, dat['ev']))
+                n_ev = max(n_ev, dat['ev'])
+
+            # get min for foe
+            else:
+                ev_adj = dat['ev'] * dat['stats']
+                logger.debug('foe node ev = {} from {} * {}'.format(ev_adj, dat['ev'], dat['stats']))
+                logger.debug('foe min between {} and {}'.format(n_ev, ev_adj))
+                n_ev = min(n_ev, ev_adj)
+
             n_traversed += dat['traversed']
 
         node.data.update({
@@ -367,7 +374,6 @@ class MonteCarlo:
         })
         logger.info('{} ev~{} after {}'.format(
             node.tag, round(n_ev, 3), n_traversed))
-            # 'hero MAX' if node.data['seat'] == self.hero else 'foe AVG'))
 
     def net(self, e):
         """Stored the balance at the start of sim.
