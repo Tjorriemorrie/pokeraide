@@ -148,7 +148,7 @@ class PE(PokerEval):
             # logger.debug('seat {} range start at {} and end at {}'.format(s, start, end))
             rng_fil = per[start:end]
             # logger.debug('seat {} has {} filtered equities'.format(s, len(rng_fil)))
-            equities_filtered[s] = sum(rng_fil) / len(rng_fil)
+            equities_filtered[s] = 0 if not rng_fil else sum(rng_fil) / len(rng_fil)
 
         # final normalization to return p~1
         total_equities = sum(e for e in equities_filtered.values())

@@ -86,7 +86,7 @@ pocket_rankings = PocketRankings.load()
 
 class ES:
 
-    SAMPLE_SIZE = 1 << 7
+    SAMPLE_SIZE = 1 << 6
 
     @classmethod
     def cut_hand_range(cls, stats):
@@ -119,7 +119,7 @@ class ES:
         query = {
             'bool': {
                 'should': [
-                    {'match': {'player': {'query': p['name'], 'boost': 5}}},
+                    {'match': {'player': {'query': p['name'], 'boost': 8}}},
                     # {'match': {'vs': {'query': engine.vs, 'boost': 2}}},
                     {'match': {'site': {'query': INDEX_NAME, 'boost': 1}}},
                 ]
@@ -226,7 +226,7 @@ class ES:
         sea = sea[:0]
         res = sea.execute()
 
-        cls.analyze_stats(sea)
+        cls.analyze_stats(sea, seat)
 
         # required to scale now mostly for using fold equity
         total_docs = sum(pa['doc_count'] for pa in res.aggregations.mesam.aksies.buckets)
@@ -247,20 +247,27 @@ class ES:
         }
 
     @classmethod
-    def analyze_stats(cls, sea):
+    def analyze_stats(cls, sea, seat):
         # logger.info('analyzing stats returned...')
 
         sea = sea[:cls.SAMPLE_SIZE]
         res = sea.execute()
 
-        # for h in res:
-        #     logger.debug('doc: score {}\n{}'.format(h._score, json.dumps(h.to_dict(), indent=4, sort_keys=True, default=str)))
+        prev_score = float('inf')
+        prev_date = datetime.datetime.utcnow()
+        for h in res:
+            if h._score == prev_score and h['created_at'] > prev_date:
+                raise Exception('created_at ordering fail')
+            prev_score = h._score
+            prev_date = h['created_at']
+            # logger.debug('doc: score {}\n{}'.format(h._score, json.dumps(h.to_dict(), indent=4, sort_keys=True, default=str)))
 
         docs_by_field = {}
         for h in res:
             for k, v in h.to_dict().items():
+                # v = 100 * v // 1 if isinstance(v, float) else v
                 docs_by_field.setdefault(k, []).append(v)
-        logger.info('docs_by_field: {}'.format(docs_by_field))
+        # logger.info('docs_by_field: {}'.format(docs_by_field))
 
         data = {}
         query = sea.to_dict()
@@ -270,10 +277,11 @@ class ES:
         for should in query['query']['function_score']['query']['bool']['should']:
             f = list(should['match'].keys())[0]
             c = Counter(docs_by_field.get(f, []))
-            v = ['{}% {}'.format(100 * mc[1] // res.hits.total, mc[0]) for mc in c.most_common(3)]
-            shoulds[f] = '{} got {}'.format(
+            v = ['{}% {}'.format(100 * mc[1] // sum(c.values()), mc[0])
+                 for mc in c.most_common(3)]
+            shoulds[f] = '{} ::: {}'.format(
                 should['match'][f]['query'],
-                ' & '.join(v) if v else '<empty>'
+                ' - '.join(v) if v else '<empty>'
             )
         data['shoulds'] = shoulds
 
@@ -281,10 +289,10 @@ class ES:
         for function in query['query']['function_score']['functions']:
             f = list(function['gauss'].keys())[0]
             c = Counter(docs_by_field.get(f, []))
-            v = ['{}% {}'.format(100 * mc[1] // res.hits.total, mc[0]) for mc in c.most_common(3)]
-            data[f] = '{} got {}'.format(
+            v = ['{}% {}'.format(100 * mc[1] // sum(c.values()), mc[0]) for mc in c.most_common(3)]
+            functions[f] = '{} ::: {}'.format(
                 function['gauss'][f]['origin'],
-                ' & '.join(v) if v else '<empty>'
+                ' - '.join(v) if v else '<empty>'
             )
         data['functions'] = functions
 
@@ -294,13 +302,17 @@ class ES:
         }
         data['aggs'] = aggs
 
-        logger.info('data:\n{}'.format(json.dumps(data, indent=4, sort_keys=True, default=str)))
+        logger.info('seat {}:\n{}'.format(seat, json.dumps(data, indent=4, sort_keys=True, default=str)))
+
+        # delta = -1 if len(Counter(docs_by_field['player'])) > 1 else 1
+        # logger.info('sample size changed with {} to {}'.format(delta, ES.SAMPLE_SIZE))
+        # ES.SAMPLE_SIZE = max(10, ES.SAMPLE_SIZE + delta)
 
     @classmethod
     def dist_player_stats(cls, stats, strength=False):
         """Order the stats to create distribution
         previously 'hand strength'"""
-        # logger.info('distributing the player stats')
+        logger.info('distributing the player stats')
         dist = SortedDict(pos, {0: 'f'})
         p = 0
         for o in ['f', 's', 'l', 'k', 'c', 'b', 'r', 'a']:
@@ -308,15 +320,16 @@ class ES:
                 dist[p] = o
                 p += max(0.01, stats[o])
                 dist[p - 0.001] = o
-        # logger.info('dist = {}'.format(dist))
+        logger.info('dist = {}'.format(dist))
         if len(dist) == 1:
             dist[1] = 'a'
 
-        if not strength:
+        logger.debug('strength? {}'.format(strength))
+        if strength is False:
             return dist
 
         r = ''
-        # logger.debug('dist = {}'.format(type(dist)))
+        logger.debug('dist = {}'.format(type(dist)))
         for _ in range(20):
             p = _ * 5 / 100
             i_pos = dist.bisect_key_left(p)
@@ -325,5 +338,5 @@ class ES:
             v = dist[k]
             r += v.upper() if (1 - strength) <= p <= 1 else v.lower()
             # logger.debug('bisected {} from {} at {}%'.format(v, k, r))
-        # logger.debug('dist_stats {}'.format(r))
+        logger.debug('dist_stats {}'.format(r))
         return r

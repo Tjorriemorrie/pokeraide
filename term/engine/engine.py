@@ -678,18 +678,51 @@ class Engine:
 
     def adjust_strength(self, s, d, a):
         """Adjust the min/max tuple of strength based on action taken"""
-        # logger.info('adjusting strength for action {}'.format(a))
+        logger.info('adjusting strength for action {}'.format(a))
 
-        if a in ['f', 'sb', 'bb']:
-            logger.debug('action is fold, bye bye')
+        if a in ['f', 'k', 'sb', 'bb']:
+            logger.debug('no aggression faced')
             return
 
-        # update strength to fold limit
-        fold_perc = d['stats']['actions'].get('f', 0.01)
-        logger.debug('seat {} has fold perc {} for current stats'.format(s, fold_perc))
+        stats = d['stats']['actions']
+        logger.debug('p stats actions: {}'.format(stats))
 
-        new_strength = d['strength'] * (1 - fold_perc)
-        logger.debug('new strength = {} (old {} * {})'.format(new_strength, d['strength'], (1 - fold_perc)))
+        dist = ES.dist_player_stats(stats)
+        logger.debug('p dist: {}'.format(dist))
+
+        # find first available lower bound
+        # from where action is met
+        lower_bound = 0.50
+        action_found = False
+        for o in ['c', 'b', 'r', 'a']:
+            if o == a:
+                action_found = True
+                logger.debug('action found')
+            if not action_found:
+                logger.debug('action not found yet...')
+                continue
+            dist_vals = [k for k, v in dist.items() if v == o]
+            logger.debug('dist_vals {}'.format(dist_vals))
+            if not dist_vals:
+                logger.debug('no dist_vals...')
+                continue
+            lower_bound = min(dist_vals)
+            logger.debug('lower bound = {} (with {})'.format(lower_bound, o))
+            break
+
+        # update strength to fold limit
+        # 1111111111
+        # fffffccccc
+        # times first call of 50% during preflop
+        # 1.00 * 50% = 0.50
+        # 0000011111
+        # ffffffffcc
+        # times first call of 60% during flop
+        # 0.50 * 20% = 0.10
+        # 0000000001
+
+        new_strength = d['strength'] * (1 - lower_bound)
+        logger.debug('new strength = {} (old {} * {})'.format(new_strength, d['strength'], (1 - lower_bound)))
         d['strength'] = new_strength
 
     @property

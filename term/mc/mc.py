@@ -118,7 +118,7 @@ class MonteCarlo:
         """
         logger.info('Monte Carlo started')
         time_start = time.time()
-        while not self.is_complete and time.time() - time_start < self.TIMEOUT:
+        while not self.is_complete and time.time() - time_start < self.TIMEOUT or True:
             self.is_complete = True
             leaves = self.tree.paths_to_leaves()
             logger.debug('leaves from tree: {}'.format(len(leaves)))
@@ -132,10 +132,10 @@ class MonteCarlo:
                 # input('>>')
                 # if random.random() < 0.001:
                 #     input('random check')
-                if time.time() - time_start >= self.TIMEOUT:
-                    logger.warn('time is up for processing!')
-                    self.is_complete = False
-                    break
+                # if time.time() - time_start >= self.TIMEOUT:
+                #     logger.warn('time is up for processing!')
+                #     self.is_complete = False
+                #     break
         duration = time.time() - time_start
         self.show_best_action()
         logger.warn('Monte Carlo ended after taking {}s'.format(int(duration)))
@@ -157,7 +157,7 @@ class MonteCarlo:
         # logger.debug('fast forwarding to path {}'.format(args))
         self.fast_forward(e, path)
         logger.info('\n{}'.format('=' * 150))
-        # input('check item')
+        input('check item')
 
     def fast_forward(self, e, path):
         """Do actions on engine till the leaf is reached. Need to do available_actions before
@@ -180,7 +180,7 @@ class MonteCarlo:
 
         leaf_node = self.tree[path[-1]]
         if leaf_node.data['traversed']:
-            logger.debug('This leaf node ({}) already traversed, skipping it'.format(leaf_node.tag))
+            logger.info('This leaf node ({}) already traversed, skipping it'.format(leaf_node.tag))
             return
 
         for nid in path[1:]:
@@ -216,7 +216,7 @@ class MonteCarlo:
         for nid in self.tree[self.tree.root].fpointer:
             dat = self.tree[nid].data
             sum_traversed += dat['traversed']
-            logger.error('{} @{} => {}'.format(dat['action'], dat['traversed'], round(dat['ev'], 3)))
+            logger.error('{} @{} => {}'.format(dat['action'], dat['traversed'], round(dat['ev'] * 100, 1)))
 
             # delta += abs(1 - (self.convergence.get(dat['action'], 1) / dat['ev'] if dat['ev'] else 1))
             # self.convergence[dat['action']] = dat['ev']
@@ -341,7 +341,7 @@ class MonteCarlo:
             # logger.debug('not updating {}: it iss final game result (no leaf nodes)'.format(node.tag))
             return
 
-        # logger.info('updating node {}'.format(node.tag))
+        logger.info('updating node {}'.format(node.tag))
         n_ev = 0
         n_traversed = 0
         for child_nid in node.fpointer:
@@ -357,17 +357,17 @@ class MonteCarlo:
                 # n_ev = min(n_ev, dat['ev'])
             ev = dat['ev'] * dat['stats']
             n_ev += ev
-                # logger.debug('{} ev~{} from ev~{} * p~{}'.format(
-                #     child_node.tag, int(ev * 100), round(dat['ev'], 3), round(dat['stats'], 3)))
+            logger.debug('{} ev~{} from ev~{} * p~{}'.format(
+                child_node.tag, round(ev, 3), round(dat['ev'], 3), round(dat['stats'], 3)))
             n_traversed += dat['traversed']
 
         node.data.update({
             'ev': n_ev,
             'traversed': n_traversed
         })
-        logger.info('{} ev~{} after {} using {}'.format(
-            node.tag, round(n_ev, 3), n_traversed,
-            'hero MAX' if node.data['seat'] == self.hero else 'foe AVG'))
+        logger.info('{} ev~{} after {}'.format(
+            node.tag, round(n_ev, 3), n_traversed))
+            # 'hero MAX' if node.data['seat'] == self.hero else 'foe AVG'))
 
     def net(self, e):
         """Stored the balance at the start of sim.
@@ -501,7 +501,7 @@ class MonteCarlo:
                     # logger.debug('maximum stack bet = {} for maxbal {}'.format(max_bal_btp, max_balance))
 
                 # round bets to a BB
-                btps_and_amts = [(btp, amt // self.engine.bb_amt * self.engine.bb_amt)
+                btps_and_amts = [(btp, amt // self.engine.bb_amt * self.engine.bb_amt + self.engine.bb_amt)
                                  for btp, amt in btps_and_amts]
 
                 betting_info = []
