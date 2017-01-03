@@ -63,6 +63,7 @@ class Game:
             for phase in ['preflop', 'flop', 'turn', 'river']:
                 for i, action_info in enumerate(d[phase]):
                     doc['{}_{}'.format(phase, i+1)] = action_info['action']
+                    doc['{}_{}_rvl'.format(phase, i+1)] = action_info['rvl']
                     if i == 0:
                         doc['{}_aggro'.format(phase)] = action_info['aggro']
                     if 'bet_to_pot' in action_info:

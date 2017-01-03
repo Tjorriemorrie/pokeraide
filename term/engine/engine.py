@@ -71,6 +71,7 @@ class Engine:
                 'showdown': [],  # for error at stats
             } for s, p in players.items()}
         self.vs = sum([1 if d['status'] == 'in' else 0 for d in self.data.values()])
+        self.rivals = self.vs
         self.winner = None
 
         self.board = kwargs.get('board', [])
@@ -194,6 +195,7 @@ class Engine:
         1 'in' status before beginning the rotation loop.
         '''
         statuses = Counter([d['status'] for d in self.data.values()])
+        self.rivals = statuses['in'] + statuses['allin']
         if not statuses['in']:
             # logger.warn('No "in" statuses left to rotate to')
             return
@@ -445,6 +447,7 @@ class Engine:
             d[self.phase].append({
                 'action': 's',
                 'aggro': False,
+                'rvl': self.rivals,
             })
             if int(action[1]) >= p['balance']:
                 action[0] = 'a'
@@ -459,6 +462,7 @@ class Engine:
             d[self.phase].append({
                 'action': 'l',
                 'aggro': False,
+                'rvl': self.rivals,
             })
             if int(action[1]) >= p['balance']:
                 action[0] = 'a'
@@ -491,6 +495,7 @@ class Engine:
                 'action': 'f',
                 'aggro': faced_aggro,
                 'pot_odds': pot_odds,
+                'rvl': self.rivals,
             })
             d['hand'] = ['  ', '  ']
             logger.debug('Did action fold')
@@ -525,6 +530,7 @@ class Engine:
                     'aggro': faced_aggro,
                     'bet_to_pot': bet_to_pot,
                     'pot_odds': pot_odds,
+                    'rvl': self.rivals,
                 })
                 d['contrib'] += int(action[1])
                 logger.debug('Did action bet/raise {}'.format(action[0]))
@@ -547,6 +553,7 @@ class Engine:
                     'action': action[0],
                     'aggro': faced_aggro,
                     'pot_odds': pot_odds,
+                    'rvl': self.rivals,
                 })
                 d['contrib'] += contrib_short
                 logger.debug('Did action {} (contrib: {})'.format(action[0], contrib_short))
@@ -558,6 +565,7 @@ class Engine:
                 'action': 'a',
                 'aggro': faced_aggro,
                 'pot_odds': pot_odds,
+                'rvl': self.rivals,
             })
             d['status'] = 'allin'
             d['contrib'] = p['balance']

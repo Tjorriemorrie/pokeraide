@@ -17,9 +17,9 @@ for _ in ("boto", "elasticsearch", "urllib3"):
 
 connections.create_connection(hosts=['es_host'])
 
-INDEX_NAME = 'governor'
+INDEX_NAME = 'pokerstars'
 
-es_index = Index(INDEX_NAME)
+es_index = Index('governor')
 # for index in connections.get_connection().indices.get('*'):
 #   print(index)
 # es_index.delete(ignore=404)
@@ -32,6 +32,7 @@ class GameAction(DocType):
     site = String(index='not_analyzed')
     game = String(index='not_analyzed')
     vs = Integer()
+
     player = String(index='not_analyzed')
     amount = Integer()
     pot = Integer()
@@ -40,33 +41,41 @@ class GameAction(DocType):
     preflop_1 = String(index='not_analyzed')
     preflop_1_btp = Float()
     preflop_1_po = Float()
+    preflop_1_rvl = Integer()
     preflop_2 = String(index='not_analyzed')
     preflop_2_btp = Float()
     preflop_2_po = Float()
+    preflop_2_rvl = Integer()
     preflop_aggro = Boolean()
 
     flop_1 = String(index='not_analyzed')
     flop_1_btp = Float()
     flop_1_po = Float()
+    flop_1_rvl = Integer()
     flop_2 = String(index='not_analyzed')
     flop_2_btp = Float()
     flop_2_po = Float()
+    flop_2_rvl = Integer()
     flop_aggro = Boolean()
 
     turn_1 = String(index='not_analyzed')
     turn_1_btp = Float()
     turn_1_po = Float()
+    turn_1_rvl = Integer()
     turn_2 = String(index='not_analyzed')
     turn_2_btp = Float()
     turn_2_po = Float()
+    turn_2_rvl = Integer()
     turn_aggro = Boolean()
 
     river_1 = String(index='not_analyzed')
     river_1_btp = Float()
     river_1_po = Float()
+    river_1_rvl = Integer()
     river_2 = String(index='not_analyzed')
     river_2_btp = Float()
     river_2_po = Float()
+    river_2_rvl = Integer()
     river_aggro = Boolean()
 
     created_at = Date()
@@ -144,6 +153,10 @@ class ES:
         phase_matching = []
         for phase in ['preflop', 'flop', 'turn', 'river']:
             for i, action_info in enumerate(d[phase]):
+                if i <= 1:
+                    function_score['function_score']['functions'].append(
+                        {'gauss': {'{}_{}_rvl'.format(phase, i+1): {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.6}}}
+                    )
                 phase_matching.append({'match': {'{}_{}'.format(phase, i+1): {'query': action_info['action'], 'boost': 3}}})
                 if i == 0:
                     phase_matching.append({'match': {'{}_aggro'.format(phase): {'query': action_info['aggro'], 'boost': 3}}})
@@ -199,7 +212,7 @@ class ES:
                 function_score['function_score']['functions'].append(
                     {
                         'gauss': {'{}_po'.format(agg_field): {'origin': pot_odds, 'scale': 0.1, 'decay': 0.9}},
-                        'weight': 5,
+                        'weight': 4,
                     }
                 )
                 logger.debug('added pot odds at {}'.format(pot_odds))
@@ -209,6 +222,12 @@ class ES:
         else:
             # logger.info('facing aggro: no, contrib short = {}'.format(contrib_short))
             pass
+
+        # facing how many rivals? (currently, not historically)
+        if agg_turn <= 2:
+            function_score['function_score']['functions'].append(
+                {'gauss': {'{}_rvl'.format(agg_field): {'origin': engine.rivals, 'scale': 1, 'decay': 0.6}}}
+            )
 
         sea = GameAction.search()
         sea = sea.query(function_score)

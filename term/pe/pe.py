@@ -14,7 +14,7 @@ logger = logging.getLogger()
 class PE(PokerEval):
     GAME = 'holdem'
     ITERATIONS = 100000
-    ITERATIONS_FAST = 10000
+    ITERATIONS_FAST = 15000
     # Sample size for the product of the hand ranges
     SAMPLE_SIZE = 0.10
 
@@ -56,7 +56,7 @@ class PE(PokerEval):
             if 'in' in d['status']:
                 seats.append(s)
                 pocket = engine.data[s]['hand']
-                # logger.debug('player {} has pocket {}'.format(s, pocket))
+                # logger.debug('player {} has pocket {}'.format(s, pocket))ª
                 if pocket != ['__', '__']:
                     hand_range = [tuple(engine.data[s]['hand'])]
                     # logger.debug('player {} added {} pocket cards'.format(s, hand_range))

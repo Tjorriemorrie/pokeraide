@@ -1,6 +1,7 @@
 from collections import deque, Counter
 from copy import deepcopy
 import hashlib
+import json
 import logging
 from operator import itemgetter
 import retrace
@@ -47,7 +48,7 @@ class MonteCarlo:
         logger.info('HERO is at seat {} with {}'.format(self.hero, self.hero_pocket))
 
         self.is_complete = False
-        self.convergence_size = 12
+        self.convergence_size = 11
         self.convergence = {
             'deq': deque(maxlen=self.convergence_size),
         }
@@ -122,10 +123,14 @@ class MonteCarlo:
             self.is_complete = True
             leaves = self.tree.paths_to_leaves()
             logger.debug('leaves from tree: {}'.format(len(leaves)))
-            leaves.sort(key=len)
-            logger.debug('{} leaves are now sorted by length'.format(len(leaves)))
+            # leaves.sort(key=lambda lp: len(lp) + sum(int(lpn.split('_')[0]) for lpn in lp), reverse=True)
+            # logger.debug('{} leaves are now sorted by formula'.format(len(leaves)))
+            # logger.error(json.dumps(leaves, indent=4, default=str))
+            # input('>>')
             leaves.sort(key=lambda lp: lp[-1][0])
             logger.debug('{} leaves are now sorted by rank'.format(len(leaves)))
+            leaves.sort(key=len)
+            logger.debug('{} leaves are now sorted by length'.format(len(leaves)))
             for leave in leaves:
                 self.run_item(leave)
                 # self.show_best_action()
@@ -141,7 +146,7 @@ class MonteCarlo:
         logger.warn('Monte Carlo ended after taking {}s'.format(int(duration)))
 
     def run_item(self, path):
-        # logger.debug('run item args: {}'.format(path))
+        logger.debug('run item args: {}'.format(path))
         e = deepcopy(self.engine)
         e.mc = True
         """To calculate the investment for the loss EV, the total amounts used till end is required. Cannot
@@ -149,61 +154,14 @@ class MonteCarlo:
          the difference from all the new matched bets from the current matched bets will be used.
          Need to add current contrib
         """
-        e.matched_start = e.data[e.q[0][0]]['matched'] + e.data[e.q[0][0]]['contrib']
-        logger.info('starting matched = {} from {} + {}'.format(
-            e.matched_start, e.data[e.q[0][0]]['matched'], e.data[e.q[0][0]]['contrib']))
+        e.matched_start = e.data[self.hero]['matched'] + e.data[self.hero]['contrib']
+        # logger.info('starting matched = {} from {} + {}'.format(
+        #     e.matched_start, e.data[e.q[0][0]]['matched'], e.data[e.q[0][0]]['contrib']))
 
         # self.tree.show()
-        # logger.debug('fast forwarding to path {}'.format(args))
         self.fast_forward(e, path)
         logger.info('\n{}'.format('=' * 150))
         # input('check item')
-
-    def fast_forward(self, e, path):
-        """Do actions on engine till the leaf is reached. Need to do available_actions before
-        every DO
-
-        First check if the leave is already processed, then skip this path. When the leaf is reached
-        then process from that node.
-
-        Remember to send through only the first letter for the action.
-
-        Then update the nodes from this leaf back up the tree
-        """
-        # logger.info('Fast forwarding to this path {}'.format(path))
-
-        if len(path) == 1:
-            logger.info('processing root for first time')
-            self.process_node(e, self.tree[path[0]])
-            self.is_complete = False
-            return
-
-        leaf_node = self.tree[path[-1]]
-        if leaf_node.data['traversed']:
-            logger.info('This leaf node ({}) already traversed, skipping it'.format(leaf_node.tag))
-            return
-
-        for nid in path[1:]:
-            node = self.tree[nid]
-            # logger.debug('node data {}'.format(node.data))
-            e.available_actions()
-            cmd = [node.data['action'][0]]
-            if 'amount' in node.data:
-                cmd.append(node.data['amount'])
-                logger.debug('Adding bet value of {}'.format(node.data['amount']))
-            logger.debug('Executing path action {} for {}'.format(cmd, node.tag))
-            e.do(cmd)
-
-            if node.is_leaf():
-                logger.debug('{} is a leaf node, processing next...'.format(node.tag))
-                self.process_node(e, node)
-                logger.info('nodes processed, now updating nodes that were fast forwarded')
-                for processed_nid in reversed(path[1:]):
-                    processed_node = self.tree[processed_nid]
-                    self.update_node(processed_node)
-
-        logger.info('all nodes in path processed')
-        self.is_complete = False
 
     def show_best_action(self):
         """Calculates best action on root"""
@@ -216,7 +174,7 @@ class MonteCarlo:
         for nid in self.tree[self.tree.root].fpointer:
             dat = self.tree[nid].data
             sum_traversed += dat['traversed']
-            logger.error('{} @{} => {}'.format(dat['action'], dat['traversed'], round(dat['ev'] * 100, 1)))
+            logger.error('{} @{} => {}'.format(dat['action'], dat['traversed'], round(dat['ev'], 4)))
 
             # delta += abs(1 - (self.convergence.get(dat['action'], 1) / dat['ev'] if dat['ev'] else 1))
             # self.convergence[dat['action']] = dat['ev']
@@ -246,6 +204,55 @@ class MonteCarlo:
             deq_cnts.most_common()[0][0]
         ))
 
+    def fast_forward(self, e, path):
+        """Do actions on engine till the leaf is reached. Need to do available_actions before
+        every DO
+
+        First check if the leave is already processed, then skip this path. When the leaf is reached
+        then process from that node.
+
+        Remember to send through only the first letter for the action.
+
+        Then update the nodes from this leaf back up the tree
+        """
+        logger.info('Fast forwarding {} nodes'.format(len(path)))
+
+        if len(path) == 1:
+            logger.info('processing root for first time')
+            self.process_node(e, self.tree[path[0]])
+            self.is_complete = False
+            return
+
+        leaf_node = self.tree[path[-1]]
+        logger.debug('checking if last node has been processed:')
+        logger.debug('last node leaf {} has node data {}'.format(leaf_node.tag, leaf_node.data))
+        if leaf_node.data['traversed']:
+            logger.info('This leaf node ({}) already traversed, skipping it'.format(leaf_node.tag))
+            return
+
+        for nid in path[1:]:
+            node = self.tree[nid]
+            logger.debug('fast forwarding action for node {}'.format(node.tag))
+            e.available_actions()
+            cmd = [node.data['action'][0]]
+            if 'amount' in node.data:
+                cmd.append(node.data['amount'])
+                logger.debug('Adding bet value of {}'.format(node.data['amount']))
+            logger.debug('Executing path action {} for {}'.format(cmd, node.tag))
+            logger.debug('Executing path action {} with data {}'.format(cmd, node.data))
+            e.do(cmd)
+
+            if node.is_leaf():
+                logger.debug('{} is a leaf node, processing next...'.format(node.tag))
+                self.process_node(e, node)
+                logger.info('nodes processed, now updating nodes that were fast forwarded')
+                for processed_nid in reversed(path[1:]):
+                    processed_node = self.tree[processed_nid]
+                    self.update_node(processed_node)
+
+        logger.info('all nodes in path processed')
+        self.is_complete = False
+
     def process_node(self, e, n):
         """Process node
         Get actions available for node
@@ -253,15 +260,34 @@ class MonteCarlo:
         Process action selected
         Return EV
         """
-        logger.info('processing node {}'.format(n.tag))
+        logger.info('processing node {} with data {}'.format(n.tag, n.data))
 
+        # this node is the hero folding
+        # was created with other children (but not most probable at that time to be proc as child)
+        # if hero folding, then make this node a leaf node with fold eq
+        # exiting before adding children alleviates the need to remove the immediately again thereafter
+        # bug: cannot use engine.q as it alread rotated after taking action getting here
+        if not n.is_root() and n.data['action'] == 'fold' and self.hero == n.data['seat']:
+            winnings, losses = self.net(e)
+            result = {
+                'ev': losses,
+                'traversed': 1,
+            }
+            logger.info('hero has folded this node given: {}'.format(result))
+            n.data.update(result)
+            logger.info('node data after fold: {}'.format(n.data))
+            return
+
+        # add the children of the node
         if not n.fpointer:
             self.add_actions(e, n)
 
+        # this node is a leaf (no more actions to take!)
+        # either the game finished and we have winner and pot
+        # or we have to use pokereval.winners
         if n.is_leaf():
             logger.info('node {} is the final action in the game'.format(n.tag))
-            # either the game finished and we have winner and pot
-            # or we have to use pokereval.winners
+            # winner given (easy resolution)
             if e.winner:
                 logger.debug('engine gave winner {}'.format(e.winner))
                 net_results = self.net(e)
@@ -287,47 +313,45 @@ class MonteCarlo:
             n.data.update(result)
             return
 
-        # not a leaf, so get child actions and
-        # process chosen uct node
+        # node is all good (not leaf (has children) and not hero folding)
+        # get child actions and process most probable action
+        a_node = self.most_probable_action(n)
+        action = a_node.data['action']
+        logger.info('taking next child node action {}'.format(action))
+
+        # if it is hero and he folds,
+        # it is not necessarily an immediate ZERO equity
+        # since my previous contrib needs to be added to the pot (i.e. contribs after starting mc)
+        # i.e. make this a leaf node implicitly
+        # no child nodes to remove for fold
+        if action == 'fold' and self.hero == a_node.data['seat']:
+            winnings, losses = self.net(e)
+            result = {
+                'ev': losses,
+                'traversed': 1,
+            }
+            logger.info('hero has folded the child node selected: {}'.format(result))
+            a_node.data.update(result)
+            logger.info('a_node data after: {}'.format(a_node.data))
+
+        # else we must process the node
         else:
-            # a_node = self.uct_action(n)
-            # a_node = self.min_action(n)
-            a_node = self.most_probable_action(n)
-            action = a_node.data['action']
-            logger.info('taking action {}'.format(action))
+            logger.info('taking action {} and processing that node'.format(action))
+            cmd = [action[0]]
+            if 'amount' in a_node.data:
+                cmd.append(a_node.data['amount'])
+                logger.debug('Adding bet value of {}'.format(a_node.data['amount']))
+            e.do(cmd)
+            self.process_node(e, a_node)
 
-            # if it is hero and he folds,
-            # it is not necessarily an immediate ZERO equity
-            # since my previous contrib needs to be added to the pot (i.e. contribs after starting mc)
-            # i.e. make this a leaf node implicitly
-            # no need to remove children as not added (at start of method)
-            if action == 'fold' and self.hero == e.q[0][0]:
-                winnings, losses = self.net(e)
-                result = {
-                    'ev': losses,
-                    'traversed': 1,
-                }
-                logger.info('hero has folded: {}'.format(result))
-                a_node.data.update(result)
+        # it will traverse back up to the root
+        # root can be skipped
+        if n.is_root():
+            logger.debug('reached the root')
+            return
 
-            # else we must process the node
-            else:
-                logger.info('taking action {} and processing that node'.format(action))
-                cmd = [action[0]]
-                if 'amount' in a_node.data:
-                    cmd.append(a_node.data['amount'])
-                    logger.debug('Adding bet value of {}'.format(a_node.data['amount']))
-                e.do(cmd)
-                self.process_node(e, a_node)
-
-            # it will traverse back up to the root
-            # root can be skipped
-            if n.is_root():
-                logger.debug('reached the root')
-                return
-
-            # action node has been processed, now update node
-            self.update_node(n)
+        # action node has been processed, now update node
+        self.update_node(n)
 
     def update_node(self, node):
         """Update the node's data
@@ -337,18 +361,29 @@ class MonteCarlo:
 
         Minimax applied, hero pick best and foe picks min after p
         """
-        if not node.fpointer:
-            # logger.debug('not updating {}: it iss final game result (no leaf nodes)'.format(node.tag))
+        # fast forwarding will send here, just ignore node if leaf
+        if node.is_leaf():
+            logger.debug('not updating {}: it is final game result (no leaf nodes)'.format(node.tag))
+            logger.debug('not updating {}: final data {}'.format(node.tag, node.data))
             return
-        logger.info('updating node {}'.format(node.tag))
+
+        depth = self.tree.depth(node)
+        logger.info('updating node {} at depth {}'.format(node.tag, depth))
+        logger.info('node has {} before update'.format(node.data))
 
         is_hero = node.data['seat'] == self.hero
-        logger.debug('is hero? {}'.format(is_hero))
+        # logger.debug('is hero? {}'.format(is_hero))
 
-        n_ev = float('-inf') if is_hero else float('inf')
+        if not len(node.fpointer):
+            logger.error('node {} with {} as no children...'.format(node.tag, node.data))
+            raise Exception('not necessary to process leaves')
+        logger.debug('extracting data from {} children nodes...'.format(len(node.fpointer)))
+
+        n_ev = float('-inf') if is_hero else 0
         n_traversed = 0
         for child_nid in node.fpointer:
             child_node = self.tree[child_nid]
+            logger.debug('child node {} has {}'.format(child_node.tag, child_node.data))
             dat = child_node.data
             if not dat['traversed']:
                 logger.debug('{} skipping untraversed'.format(child_node.tag))
@@ -356,15 +391,18 @@ class MonteCarlo:
 
             # get max for hero
             if is_hero:
-                logger.debug('hero max between {} and {}'.format(n_ev, dat['ev']))
-                n_ev = max(n_ev, dat['ev'])
+                equities = PE.showdown_equities(self.engine)
+                n_ev = max(n_ev, dat['ev'] * equities[self.hero])
+                # n_ev = max(n_ev, dat['ev'])
+                logger.debug('hero ev of {}'.format(n_ev))
 
             # get min for foe
             else:
-                ev_adj = dat['ev'] * dat['stats']
-                logger.debug('foe node ev = {} from {} * {}'.format(ev_adj, dat['ev'], dat['stats']))
-                logger.debug('foe min between {} and {}'.format(n_ev, ev_adj))
-                n_ev = min(n_ev, ev_adj)
+                # ev_adj = dat['ev'] * dat['stats']
+                # logger.debug('foe min between {} and {}'.format(n_ev, ev_adj))
+                # n_ev = min(n_ev, ev_adj)
+                n_ev += dat['ev'] * dat['stats']
+                logger.debug('foe node ev = {} from {} * {}'.format(n_ev, dat['ev'], dat['stats']))
 
             n_traversed += dat['traversed']
 
@@ -372,8 +410,12 @@ class MonteCarlo:
             'ev': n_ev,
             'traversed': n_traversed
         })
-        logger.info('{} ev~{} after {}'.format(
+        logger.info('now node has {} ev~{} after {}'.format(
             node.tag, round(n_ev, 3), n_traversed))
+
+        if not node.data['traversed']:
+            raise Exception('node cannot be untraversed')
+
 
     def net(self, e):
         """Stored the balance at the start of sim.
@@ -400,8 +442,8 @@ class MonteCarlo:
     def most_probable_action(self, parent):
         """All nodes will be processed once at least but it will never happen. Just return
         the most probable node for most accurate play."""
-        logger.info('getting most probable action for {}'.format(parent.tag))
-        for _ in range(9):
+        logger.info('getting most probable action after {}'.format(parent.tag))
+        for _ in range(101):
             for nid in parent.fpointer:
                 if not nid.startswith(str(_)):
                     continue
@@ -446,6 +488,11 @@ class MonteCarlo:
         if 'check' in actions:
             actions.remove('fold')
             # logger.debug('removed fold when check available')
+
+        # remove fold for hero
+        # if s == self.hero and 'fold' in actions:
+        #     actions.remove('fold')
+        #     logger.debug('removed fold from hero')
 
         # remove raise if player has already been aggressive
         if 'raise' in actions and any(pa['action'] in 'br' for pa in d[e.phase]):
@@ -568,9 +615,9 @@ class MonteCarlo:
         # logger.info('before sorting {}'.format(action_nodes))
         sorted(action_nodes, key=itemgetter('stats'))
         # logger.info('after sorting {}'.format(action_nodes))
-        for rank, action_node in enumerate(action_nodes):
+        for action_node in action_nodes:
             node_tag = '{}_{}_{}'.format(action_node['action'], s, e.phase)
-            identifier = '{}_{}'.format(rank + 1, uuid.uuid4())
+            identifier = '{}_{}'.format(int(action_node['stats'] * 100), uuid.uuid4())
             if action_node['action'] != 'fold':
                 action_node['stats'] = max(0.01, action_node['stats'] / total_stats * non_fold_equity)
             self.tree.create_node(tag=node_tag, identifier=identifier, parent=parent.identifier, data=action_node)

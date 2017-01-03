@@ -70,4 +70,6 @@ src/node_modules/
 # pyenv
 .python-version
 
+# mac finder
+.DS_Store
 
