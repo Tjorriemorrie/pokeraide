@@ -1,19 +1,8 @@
-# import cv2
-# from itertools import product
+import datetime
 import logging
-# import numpy as np
-# from PIL import Image  #, ImageFilter, ImageGrab
 import os
-# import re
-# import ruamel.yaml
+from shutil import copyfile
 
-# import sys
-# import time
-# import pytesseract
-# from configobj import ConfigObj
-
-# from decisionmaker.genetic_algorithm import GeneticAlgorithm
-# from tools.vbox_manager import VirtualBoxController
 from scraper.screens.local.screen import Local
 
 

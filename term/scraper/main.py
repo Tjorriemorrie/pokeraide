@@ -4,7 +4,7 @@ from scraper.sites.partypoker.site import PartyPoker
 from scraper.sites.zynga.site import Zynga
 
 from scraper.screens.vbox.screen import Vbox
-from scraper.screens.adb.screen import Adb
+from scraper.screens.avd.screen import Avd
 from scraper.screens.local.screen import Local
 
 
@@ -16,8 +16,8 @@ class Scraper:
 
         if screen_name == 'vbox':
             screen = Vbox()
-        elif screen_name == 'adb':
-            screen = Adb()
+        elif screen_name == 'avd':
+            screen = Avd()
         elif screen_name.startswith('local'):
             screen = Local(screen_name.split('-')[-1])
         else:
@@ -31,11 +31,13 @@ class Scraper:
         else:
             raise NotImplementedError('{} is not implemented'.format(site_info))
 
-    def run(self):
+    def play(self):
         self.logger.info('scraping {} via {}'.format(self.site.NAME, self.site.screen.NAME))
+        for _ in range(1):
+            img_file = self.site.screen.take_screen_shot()
+            self.site.parse_screen(img_file)
+
+    def record(self):
+        self.logger.info('recording {} via {}'.format(self.site.NAME, self.site.screen.NAME))
         while True:
-            screen = self.site.screen.take_screen_shot()
-            self.site.parse_screen(screen)
-            break
-
-
+            self.site.screen.take_screen_shot(True)

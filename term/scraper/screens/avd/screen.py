@@ -2,18 +2,17 @@ import datetime
 import logging
 import os
 from PIL import Image
-from shutil import copyfile
 
 from scraper.screens.base import BaseScreen
-from scraper.screens.adb.adb import ADB
+from scraper.screens.avd.adb import ADB
 
 
-class Adb(BaseScreen):
+class Avd(BaseScreen):
     """android debug screen provider"""
     # todo could start specific site app
 
     NAME = 'android'
-    CODE = 'adb'
+    CODE = 'avd'
     FILE_TMP = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'tmp.png')
 
     def __init__(self):

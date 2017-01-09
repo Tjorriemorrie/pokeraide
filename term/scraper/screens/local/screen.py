@@ -1,6 +1,7 @@
 import logging
 import os
 from PIL import Image
+import random
 
 
 class Local:
@@ -29,8 +30,6 @@ class Local:
 
     def take_screen_shot(self):
         """return next file from iterator"""
-        img_file = self.files.pop(0)
+        img_file = self.files[0]
         self.logger.debug('next img file {}'.format(img_file))
-        im = Image.open(img_file)
-        self.logger.debug('loaded {} {} {}'.format(im.format, im.size, im.mode))
-        return im
+        return img_file
