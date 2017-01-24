@@ -16,22 +16,23 @@ class Table:
 
     def __init__(self):
         with shelve.open(self.FILE) as shlv:
+            self.site_name = shlv.get('site_name', 'manual')
             self.players = shlv.get('players', {})
             self.button = shlv.get('button', 0)
             self.sb = shlv.get('sb', 1)
             self.bb = shlv.get('bb', 2)
 
     def __repr__(self):
-        r = 'Table:\n'
-        r += '{} players:\n'.format(len(self.players))
-        r += '{}/{} blinds:\n\n'.format(self.sb, self.bb)
+        r = '{}:\n'.format(self.site_name)
+        r += 'Players: {}\n'.format(len(self.players))
+        r += 'Blinds: {}/{}\n\n'.format(self.sb, self.bb)
         for s, p in self.players.items():
             pr = '{:>10.10}'.format(p.get('name', ''))
             pr += '{: 8d} '.format(p.get('balance', 0))
             pr += '{:>4}'.format(s)
             if p:
                 pr += '{} '.format('   ' if p['status'] else 'OUT')
-                pr += '{} '.format('[]' if self.button == s else '  ')
+                pr += '{} '.format('D' if self.button == s else '  ')
             r += '{}\n'.format(pr)
         return r
 
@@ -46,14 +47,17 @@ class Table:
     @property
     def options(self):
         my_options = [
+            'Site',
             'Table [Button|Join|Leave|Seats]',
             '#seat [Name|Balance|Sitout]',
             'Play',
+            'Quit',
         ]
         return my_options
 
     def handle_input(self, cmd):
         '''
+        Site
         Table
             Button
             Join
@@ -63,11 +67,16 @@ class Table:
             Name
             Balance
             Status
+
+        Quit
         '''
         # print('cmd 0 = [{}] {}'.format(type(cmd[0]), cmd[0]))
         if cmd[0] == 'Q':
             self.persist_table()
             exit()
+
+        elif cmd[0] == 's':
+            self.site_name = cmd[1].strip().upper()
 
         elif cmd[0] == 't':
             if cmd[1] == 'b':
@@ -154,6 +163,7 @@ class Table:
     def persist_table(self):
         logger.info('saving table info...')
         with shelve.open(self.FILE) as shlv:
+            shlv['site_name'] = self.site_name
             shlv['players'] = self.players
             shlv['button'] = self.button
             shlv['sb'] = self.sb

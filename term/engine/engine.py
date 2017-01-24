@@ -44,11 +44,13 @@ class Engine:
 
     FILE = join(dirname(realpath(__file__)), 'engine')
 
-    def __init__(self, button, players, sb, bb, **kwargs):
+    def __init__(self, site_name, button, players, sb, bb, **kwargs):
+        logger.info('Engine site_name: {}'.format(site_name))
         logger.info('Engine button: {}'.format(button))
         logger.info('Engine players: {}'.format(len(players)))
         logger.info('Engine kwargs: {}'.format(kwargs))
 
+        self.site_name = site_name
         self.button = button
         self.players = players
         self.sb_amt = sb
@@ -96,11 +98,11 @@ class Engine:
 
     def save(self):
         """saves game. this state should be threadsafe"""
-        logger.info('saving engine state...')
+        # logger.info('saving engine state...')
         with shelve.open(self.FILE) as shlv:
             shlv['hash'] = json.dumps(self.data, sort_keys=True)
             shlv['engine'] = self
-        logger.info('engine state saved to {}'.format(self.FILE))
+        # logger.info('engine state saved to {}'.format(self.FILE))
 
     def __copy__(self):
         cls = self.__class__
@@ -133,18 +135,16 @@ class Engine:
 
         for s, p in self.players.items():
             d = self.data[s]
-            if 'in' not in d['status']:
-                continue
 
             # add player info
             pr = '{:>10.10} '.format(p.get('name', ''))
             pr += '{: 6d} '.format(p.get('balance', 0) - d.get('contrib', 0))
 
             status = '<--' if s == pta and self.phase != self.PHASE_SHOWDOWN else '   '
-            pr += '{:>6} '.format(d.get('matched', 0) + d.get('contrib', 0) or '')
+            pr += '{:>7} '.format(d.get('matched', 0) + d.get('contrib', 0) or '')
             pr += '{} '.format(' '.join(d['hand']))
             pr += '{:>3} '.format(s)
-            pr += '{} '.format('[]' if self.button == s else '  ')
+            pr += '{} '.format('D' if self.button == s else ' ')
             pr += '{} '.format(status)
             pr += '{:3} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d['preflop']))
             pr += '{:3} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d['flop']))
@@ -155,10 +155,10 @@ class Engine:
             r += '{}\n'.format(pr)
 
             # add player stats
-            if self.phase != self.PHASE_SHOWDOWN:
+            if self.phase != self.PHASE_SHOWDOWN and 'in' in d['status']:
                 d['stats'] = ES.player_stats(self, s)
                 dist_stats = ES.dist_player_stats(d['stats']['actions'], d['strength'])
-                r += '{:>40}%'.format(int(equities[s] * 100))
+                r += '{:>9}%'.format(int(equities[s] * 100))
                 r += '{:>21}\n\n'.format(dist_stats)
 
         return r

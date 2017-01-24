@@ -10,6 +10,17 @@ import {
 
 export class Play extends Component {
 
+    constructor(props) {
+        super(props);
+        console.info('play props:', this.props);
+        this.state = {
+            seats: 0,
+            phase: 'preflop',
+            pot: 0,
+            players: [],
+        }
+    }
+
     render() {
         return (
             <div className="play flexcol">

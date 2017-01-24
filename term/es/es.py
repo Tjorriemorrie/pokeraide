@@ -17,9 +17,9 @@ for _ in ("boto", "elasticsearch", "urllib3"):
 
 connections.create_connection(hosts=['es_host'])
 
-INDEX_NAME = 'pokerstars'
+INDEX_NAME = 'poker'
 
-es_index = Index('governor')
+es_index = Index(INDEX_NAME)
 # for index in connections.get_connection().indices.get('*'):
 #   print(index)
 # es_index.delete(ignore=404)
@@ -130,7 +130,7 @@ class ES:
                 'should': [
                     {'match': {'player': {'query': p['name'], 'boost': 8}}},
                     # {'match': {'vs': {'query': engine.vs, 'boost': 2}}},
-                    {'match': {'site': {'query': INDEX_NAME, 'boost': 1}}},
+                    {'match': {'site': {'query': engine.site_name, 'boost': 1}}},
                 ]
             }
         }
@@ -321,7 +321,7 @@ class ES:
         }
         data['aggs'] = aggs
 
-        logger.info('seat {}:\n{}'.format(seat, json.dumps(data, indent=4, sort_keys=True, default=str)))
+        # logger.info('seat {}:\n{}'.format(seat, json.dumps(data, indent=4, sort_keys=True, default=str)))
 
         # delta = -1 if len(Counter(docs_by_field['player'])) > 1 else 1
         # logger.info('sample size changed with {} to {}'.format(delta, ES.SAMPLE_SIZE))
@@ -331,7 +331,7 @@ class ES:
     def dist_player_stats(cls, stats, strength=False):
         """Order the stats to create distribution
         previously 'hand strength'"""
-        logger.info('distributing the player stats')
+        # logger.info('distributing the player stats')
         dist = SortedDict(pos, {0: 'f'})
         p = 0
         for o in ['f', 's', 'l', 'k', 'c', 'b', 'r', 'a']:
@@ -339,16 +339,16 @@ class ES:
                 dist[p] = o
                 p += max(0.01, stats[o])
                 dist[p - 0.001] = o
-        logger.info('dist = {}'.format(dist))
+        # logger.info('dist = {}'.format(dist))
         if len(dist) == 1:
             dist[1] = 'a'
 
-        logger.debug('strength? {}'.format(strength))
+        # logger.debug('strength? {}'.format(strength))
         if strength is False:
             return dist
 
         r = ''
-        logger.debug('dist = {}'.format(type(dist)))
+        # logger.debug('dist = {}'.format(type(dist)))
         for _ in range(20):
             p = _ * 5 / 100
             i_pos = dist.bisect_key_left(p)
@@ -357,5 +357,5 @@ class ES:
             v = dist[k]
             r += v.upper() if (1 - strength) <= p <= 1 else v.lower()
             # logger.debug('bisected {} from {} at {}%'.format(v, k, r))
-        logger.debug('dist_stats {}'.format(r))
+        # logger.debug('dist_stats {}'.format(r))
         return r
