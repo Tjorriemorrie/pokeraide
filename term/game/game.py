@@ -68,6 +68,12 @@ class Game:
     def handle_input(self, i):
         logger.info('input = {}'.format(i))
         cmd = i.split(' ')
+        # overwrite board?
+        if cmd[0] == 'B':
+            self.engine.board = cmd[1:]
+            logger.info('set board to {}'.format(cmd[1:]))
+            return
+        # send expected engine cmd
         e_copy = deepcopy(self.engine)
         self.engine.do(cmd)
 
