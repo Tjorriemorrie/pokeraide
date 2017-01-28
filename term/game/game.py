@@ -44,12 +44,13 @@ class Game:
             o = ' | '.join(available_actions)
             u = self.replay()
 
-            i = input('\n\n\n' + r + '\n\n' + o + u + '\n$ ')
+            i = input('\n\n\n' + r + '\n\n' + o + u + '\n$ ').strip()
+
             # exit?
             if i == 'X':
                 return
             # undo?
-            if i == 'u':
+            if i == 'U':
                 self.undo()
                 continue
             # redo?
@@ -60,26 +61,36 @@ class Game:
             if i == 'M':
                 MonteCarlo(self.engine).run()
                 continue
+
+            cmd = i.split()
+
+            # overwrite board?
+            if cmd[0] == 'B':
+                self.engine.board = cmd[1:]
+                logger.info('set board to {}'.format(cmd[1:]))
+                continue
+            if cmd[0] == 't':
+                s = self.engine.q[0][0]
+                p_contrib = self.engine.data[s]['contrib']
+                bet_from_contrib = int(cmd[1]) - p_contrib
+                logger.info('extracted {} bet/raise from contrib for player {}'.format(bet_from_contrib, s))
+                cmd = ['b', bet_from_contrib]
+
             # play
-            self.handle_input(i.lower())
+            self.handle_input(cmd)
 
         self.save_game()
 
-    def handle_input(self, i):
-        logger.info('input = {}'.format(i))
-        cmd = i.split(' ')
-        # overwrite board?
-        if cmd[0] == 'B':
-            self.engine.board = cmd[1:]
-            logger.info('set board to {}'.format(cmd[1:]))
-            return
+    def handle_input(self, cmd):
+        logger.info('input = {}'.format(cmd))
+
         # send expected engine cmd
         e_copy = deepcopy(self.engine)
         self.engine.do(cmd)
 
         # action successful, save in history
-        self.history[self.cursor] = (e_copy, i)
-        logger.info('keeping history at {} (before cmd {})'.format(self.cursor, i))
+        self.history[self.cursor] = (e_copy, cmd)
+        logger.info('keeping history at {} (before cmd {})'.format(self.cursor, cmd))
         self.cursor += 1
 
         logger.debug('input handled and done')
@@ -127,8 +138,8 @@ class Game:
         """allow same commands to be replayed if in history"""
         if len(self.history) <= self.cursor:
             return ''
-        past_i = self.history[self.cursor]
+        past_state = self.history[self.cursor]
         if not force:
-            return '\nReplay: {}?'.format(past_i[1])
-        self.handle_input(past_i[1])
+            return '\nReplay: {}?'.format(past_state[1])
+        self.handle_input(past_state[1])
 

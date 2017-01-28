@@ -159,7 +159,8 @@ class Engine:
                 d['stats'] = ES.player_stats(self, s)
                 dist_stats = ES.dist_player_stats(d['stats']['actions'], d['strength'])
                 r += '{:>9}%'.format(int(equities[s] * 100))
-                r += '{:>21}\n\n'.format(dist_stats)
+                r += '{:>21}\n'.format(dist_stats)
+            r += '\n'
 
         return r
 
@@ -405,7 +406,7 @@ class Engine:
             logger.warn('no action received')
             return
 
-        if self.mc and action[0] not in ['a', 'b', 'f', 'c', 'r', 'gg']:
+        if action[0] not in ['a', 'b', 'f', 'k', 'c', 'r', 'gg', 'h', 'sb', 'bb']:
             raise Exception('bad action {} given to engine'.format(action))
 
         if action[0] == 'h':

@@ -66,12 +66,17 @@ class PE(PokerEval):
                 hand_ranges.append(hand_range)
 
         seats_len = len(seats)
-        if seats_len < 2:
-            raise ValueError('Not enough players still in given to calculate winners')
-        elif seats_len > 2 or all(len(hr) > 1 for hr in hand_ranges):
-            equities = PE.showdown_equities_n(engine, seats, hand_ranges, seats_len)
-        else:
-            equities = PE.showdown_equities_2(engine, seats, hand_ranges, seats_len)
+        equities = {s: 1 / seats_len for s in seats}
+        try:
+            if seats_len < 2:
+                logger.error('Not enough players still in given to calculate winners')
+            elif seats_len > 2 or all(len(hr) > 1 for hr in hand_ranges):
+                equities = PE.showdown_equities_n(engine, seats, hand_ranges, seats_len)
+            else:
+                equities = PE.showdown_equities_2(engine, seats, hand_ranges, seats_len)
+        except RuntimeError as e:
+            logger.exception(e)
+            engine.board = []
 
         return equities
 

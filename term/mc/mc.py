@@ -38,7 +38,7 @@ class MonteCarlo:
                 logger.info('loading engine from file...')
                 self.ENGINE_CHECKSUM = shlv['hash']
                 self.init(shlv['engine'])
-                self.TIMEOUT = 2
+                self.TIMEOUT = 1
 
     def init(self, engine):
         logger.info('init state')
@@ -79,7 +79,7 @@ class MonteCarlo:
                 if not self.watched:
                     logger.error('hero does not have a pocket')
                     self.watched = True
-                time.sleep(1)
+                time.sleep(0.5)
                 continue
 
             # do not analyze if hero is not to play
@@ -87,7 +87,7 @@ class MonteCarlo:
                 if not self.watched:
                     logger.error('hero is not to act')
                     self.watched = True
-                time.sleep(2)
+                time.sleep(0.5)
                 continue
 
             if self.is_complete:

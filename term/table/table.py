@@ -126,10 +126,10 @@ class Table:
 
         elif cmd[0] == 'g':
             players = {}
-            for _ in range(1, 9):
+            for _ in range(1, 7):
                 players[_] = {
-                    'name': '?',
-                    'balance': 160,
+                    'name': 'joe',
+                    'balance': 1000,
                     'status': 1,
                 }
             players[4]['name'] = 'me'
