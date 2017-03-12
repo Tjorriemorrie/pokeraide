@@ -3,7 +3,7 @@ import functools
 from itertools import product, chain
 import logging
 from math import ceil, floor
-from pokereval import PokerEval
+import requests
 from sortedcontainers import SortedList
 import time
 
@@ -11,10 +11,7 @@ import time
 logger = logging.getLogger()
 
 
-class PE(PokerEval):
-    GAME = 'holdem'
-    ITERATIONS = 100000
-    ITERATIONS_FAST = 15000
+class PE:
     # Sample size for the product of the hand ranges
     SAMPLE_SIZE = 0.10
 
@@ -22,14 +19,16 @@ class PE(PokerEval):
     def hand_strength(cls, hand):
         """Used for calculating the hand strengths for ranking pockets"""
         pockets = [list(hand), ['__', '__']]
-        board = [255] * 5
-        equities = cls.poker_eval(cls,
-            pockets=pockets,
-            board=board,
-            iterations=cls.ITERATIONS,
-            game=cls.GAME
-        )
-        return equities['eval'][0]['ev'] / 1000
+        board = ['__'] * 5
+        res = requests.post('http://127.0.0.1:5000/', json={
+            'pockets': pockets,
+            'board': board,
+        })
+        res.raise_for_status()
+        equities = res.json()
+        hand_strength = equities['eval'][0]['ev'] / 1000
+        logger.debug('pocket {} strength: {}'.format(hand, hand_strength))
+        return hand_strength
 
     @classmethod
     def showdown_equities(cls, engine):

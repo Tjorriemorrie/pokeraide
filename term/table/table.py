@@ -97,7 +97,7 @@ class Table:
                 seats = int(cmd[2])
                 logger.info('setting table seats from {} to {}'.format(len(self.players), seats))
                 while len(self.players) < seats:
-                    next_seat = 1 if not self.players else max(list(self.players.keys())) + 1
+                    next_sea¡t = 1 if not self.players else max(list(self.players.keys())) + 1
                     self.players[next_seat] = {
                         'name': 'joe',
                         'balance': 100,

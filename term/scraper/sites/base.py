@@ -14,15 +14,13 @@ from sortedcontainers import SortedDict
 class BaseSite:
     """Base scraper for all sites"""
 
-    def __init__(self, screen, seats):
+    def __init__(self, seats, debug=False):
         self.logger = logging.getLogger()
         self.logger.info('initialising site...')
 
-        self.seats = int(seats)
-        self.screen = screen
+        self.debug = debug
 
-        self.path_images = os.path.join(self.DIR, screen.CODE, 'img')
-        self.file_coords = os.path.join(self.DIR, screen.CODE, 'coords.yml')
+        self.seats = int(seats)
 
         self.load_templates()
         self.load_coordinates()
@@ -35,25 +33,23 @@ class BaseSite:
         """Loads images contents onto instance"""
         self.logger.info('loading cards images...')
         self.img = {}
-        self.rgb = {}
-        for (dirpath, _, filenames) in os.walk(self.path_images):
-            for filename in filenames:
-                if filename.startswith('.'):
-                    self.logger.info('skipping . file {}'.format(filename))
-                    continue
-                name = re.sub('[ \W]', '', filename.split('.')[0], re.I).lower()
-                path_img = os.path.join(dirpath, filename)
-                self.logger.debug('loading {} (from {})'.format(name, path_img))
-                img = Image.open(path_img)
-                self.img[name] = img
-                # self.rgb[name] = cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB)
+        for entry in os.scandir(self.PATH_IMAGES):
+            if not entry.is_file() or entry.name.startswith('.'):
+                self.logger.debug('skipping . file {}'.format(entry.name))
+                continue
+            name = re.sub('[ \W]', '', entry.name.split('.')[0], re.I).lower()
+            path_img = os.path.join(self.PATH_IMAGES, entry.name)
+            self.logger.debug('loading {}'.format(name))
+            img = Image.open(path_img)
+            self.img[name] = img
 
     def load_coordinates(self):
         """Load coordinates"""
-        self.logger.info('Loading coords from {}'.format(self.file_coords))
-        with open(self.file_coords, 'r') as f:
-            self.coords = ruamel.yaml.safe_load(f)
-        self.logger.info(self.coords)
+        self.logger.info('Loading coords from {}'.format(self.FILE_COORDS))
+        with open(self.FILE_COORDS, 'r') as f:
+            coords = ruamel.yaml.safe_load(f)
+        self.coords = coords[self.seats]
+        self.logger.debug(self.coords)
 
     def rotate(self, image, angle):
         """Rotates image"""
@@ -85,7 +81,7 @@ class BaseSite:
         comp_cnts = Counter(comp.flatten())
         diffs = [(cnt - comp_cnts[el]) ** 2 for el, cnt in tpl_cnts.items()]
         mse = sum(diffs) / len(tpl_cnts)
-        self.logger.info('MSE {} over {} pixels ({})'.format(int(mse), len(tpl_cnts), tpl_cnts.most_common(3)))
+        self.logger.debug('MSE {} over {} pixels ({})'.format(int(mse), len(tpl_cnts), tpl_cnts.most_common(3)))
         return mse
     
     def find_coeffs(self, pa, pb):
@@ -135,3 +131,22 @@ class BaseSite:
 
         self.logger.info('mse not above threshold of {}'.format(threshold))
         return None
+
+    def match_template(self, img, template, threshold):
+        """Matches a template
+        Converts it to grayscale
+        Checks against provided threshold if matched.
+        Return None when below threshold"""
+        template = template.convert('L')
+        res = cv2.matchTemplate(np.array(img), np.array(template), cv2.TM_CCOEFF_NORMED)
+        mml = cv2.minMaxLoc(res)
+        max_loc = mml[1] >= threshold and mml[-1]
+        self.logger.info('template match found: {} [{:.2f} >= {:.2f}]'.format(max_loc, mml[1], threshold))
+        return max_loc
+
+
+class SiteException(Exception):
+    pass
+
+class NoDealerButtonError(Exception):
+    pass

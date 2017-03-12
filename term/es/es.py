@@ -15,7 +15,7 @@ for _ in ("boto", "elasticsearch", "urllib3"):
     logging.getLogger(_).setLevel(logging.ERROR)
 
 
-connections.create_connection(hosts=['es_host'])
+connections.create_connection(hosts=['localhost'])
 
 INDEX_NAME = 'poker'
 

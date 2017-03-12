@@ -10,9 +10,6 @@ from es.es import ES
 from pe.pe import PE
 
 
-logger = logging.getLogger()
-
-
 class Engine:
     '''
     The engine requires various properties for the state
@@ -45,10 +42,11 @@ class Engine:
     FILE = join(dirname(realpath(__file__)), 'engine')
 
     def __init__(self, site_name, button, players, sb, bb, **kwargs):
-        logger.info('Engine site_name: {}'.format(site_name))
-        logger.info('Engine button: {}'.format(button))
-        logger.info('Engine players: {}'.format(len(players)))
-        logger.info('Engine kwargs: {}'.format(kwargs))
+        self.logger = logging.getLogger()
+        self.loggerinfo('Engine site_name: {}'.format(site_name))
+        self.loggerinfo('Engine button: {}'.format(button))
+        self.loggerinfo('Engine players: {}'.format(len(players)))
+        self.loggerinfo('Engine kwargs: {}'.format(kwargs))
 
         self.site_name = site_name
         self.button = button
@@ -98,11 +96,11 @@ class Engine:
 
     def save(self):
         """saves game. this state should be threadsafe"""
-        # logger.info('saving engine state...')
+        # self.loggerinfo('saving engine state...')
         with shelve.open(self.FILE) as shlv:
             shlv['hash'] = json.dumps(self.data, sort_keys=True)
             shlv['engine'] = self
-        # logger.info('engine state saved to {}'.format(self.FILE))
+        # self.loggerinfo('engine state saved to {}'.format(self.FILE))
 
     def __copy__(self):
         cls = self.__class__
@@ -119,7 +117,7 @@ class Engine:
         return result
 
     def __repr__(self):
-        logger.debug('getting engine repr...')
+        self.loggerdebug('getting engine repr...')
         r = '{}:\n'.format(self.phase)
 
         r += 'Pot: {}\n'.format(self.pot)
@@ -131,7 +129,7 @@ class Engine:
 
         pta = self.q[0][0] if self.q else 0
         equities = PE.showdown_equities(self)
-        logger.debug('got equities for repr')
+        self.loggerdebug('got equities for repr')
 
         for s, p in self.players.items():
             d = self.data[s]
@@ -172,18 +170,18 @@ class Engine:
         Start at dealer and then rotate to next player that is still playing.
         """
         players_from_button = [(s, p) for s, p in self.players.items() if s >= self.button]
-        # logger.debug('players_from_button {}'.format(players_from_button))
+        # self.loggerdebug('players_from_button {}'.format(players_from_button))
         players_rest = [(s, p) for s, p in self.players.items() if s < self.button]
-        # logger.debug('players_rest {}'.format(players_rest))
+        # self.loggerdebug('players_rest {}'.format(players_rest))
         self.q = deque(players_from_button + players_rest)
-        # logger.info('new deque created for this phase {}'.format(self.q))
+        # self.loggerinfo('new deque created for this phase {}'.format(self.q))
         self.rotate()
 
-        logger.debug('calculating player positions')
+        self.loggerdebug('calculating player positions')
         pos = 1
         for s, q in self.q:
             self.data[s]['pos'] = pos
-            # logger.info('player position {} for seat {}'.format(pos, s))
+            # self.loggerinfo('player position {} for seat {}'.format(pos, s))
             pos += 1
 
     def rotate(self):
@@ -198,17 +196,17 @@ class Engine:
         statuses = Counter([d['status'] for d in self.data.values()])
         self.rivals = statuses['in'] + statuses['allin']
         if not statuses['in']:
-            # logger.warn('No "in" statuses left to rotate to')
+            # self.loggerwarn('No "in" statuses left to rotate to')
             return
 
         while True:
-            # logger.debug('deque [{}]: {}'.format(len(list(self.q)), self.queue_display()))
-            # logger.debug('rotate: player was seat {}'.format(self.q[0][0]))
+            # self.loggerdebug('deque [{}]: {}'.format(len(list(self.q)), self.queue_display()))
+            # self.loggerdebug('rotate: player was seat {}'.format(self.q[0][0]))
             self.q.rotate(-1)
-            # logger.debug('rotate: player now seat {}'.format(self.q[0][0]))
+            # self.loggerdebug('rotate: player now seat {}'.format(self.q[0][0]))
             d = self.data[self.q[0][0]]
             if d['status'] == 'in':
-                logger.info('next player is {} {}'.format(self.q[0][0], self.q[0][1]['name']))
+                self.loggerinfo('next player is {} {}'.format(self.q[0][0], self.q[0][1]['name']))
                 break
 
     def queue_display(self):
@@ -233,18 +231,18 @@ class Engine:
         At start we check if game phase should skip ahead to showdown, e.g.
           all players are allin
         '''
-        # logger.info('getting available actions from engine')
+        # self.loggerinfo('getting available actions from engine')
         self.check_game_finished()
 
         phase_data = getattr(self, self.phase)
         actions = ['hand']
 
         if self.phase == self.PHASE_PREFLOP:
-            # logger.debug('adding preflop actions')
+            # self.loggerdebug('adding preflop actions')
             if not phase_data.get('started'):
-                # logger.debug('starting preflop')
+                # self.loggerdebug('starting preflop')
                 for s, p in self.players.items():
-                    # logger.debug(p)
+                    # self.loggerdebug(p)
                     self.data[s]['hand'] = ['__', '__'] if bool(p.get('status')) else ['  ', '  ']
                 self.player_queue()
                 # for headsup the button posts SB
@@ -258,7 +256,7 @@ class Engine:
                 phase_data = getattr(self, self.phase)
 
         if self.phase == self.PHASE_FLOP:
-            # logger.debug('adding flop actions')
+            # self.loggerdebug('adding flop actions')
             if not phase_data.get('started'):
                 self.player_queue()
                 phase_data['started'] = True
@@ -270,7 +268,7 @@ class Engine:
                 phase_data = getattr(self, self.phase)
 
         if self.phase == self.PHASE_TURN:
-            # logger.debug('adding turn actions')
+            # self.loggerdebug('adding turn actions')
             if not phase_data.get('started'):
                 self.player_queue()
                 phase_data['started'] = True
@@ -282,7 +280,7 @@ class Engine:
                 phase_data = getattr(self, self.phase)
 
         if self.phase == self.PHASE_RIVER:
-            # logger.debug('adding river actions')
+            # self.loggerdebug('adding river actions')
             if not phase_data.get('started'):
                 self.player_queue()
                 phase_data['started'] = True
@@ -294,27 +292,27 @@ class Engine:
                 phase_data = getattr(self, self.phase)
 
         if self.phase == self.PHASE_SHOWDOWN:
-            logger.debug('phase in showdown')
+            self.loggerdebug('phase in showdown')
             if not phase_data.get('started'):
-                logger.debug('showdown has not started')
+                self.loggerdebug('showdown has not started')
                 phase_data['started'] = True
             if not phase_data.get('finished'):
-                logger.debug('showdown has not finished')
+                self.loggerdebug('showdown has not finished')
                 statuses = Counter([d['status'] for d in self.data.values()])
-                logger.debug('SD statuses = {}'.format(list(statuses)))
+                self.loggerdebug('SD statuses = {}'.format(list(statuses)))
                 if statuses['in'] + statuses['allin'] <= 1:
-                    logger.info('SD is finished')
+                    self.loggerinfo('SD is finished')
                     for s, d in self.data.items():
                         if 'in' in d['status']:
                             self.do(['gg', s])
                             break
                     phase_data['finished'] = True
-                    logger.debug('showdown finished with 1 player')
+                    self.loggerdebug('showdown finished with 1 player')
                 else:
                     actions.append('gg')
-                    logger.debug('showdown not finished with n players')
+                    self.loggerdebug('showdown not finished with n players')
             if phase_data.get('finished'):
-                logger.debug('showdown finished')
+                self.loggerdebug('showdown finished')
                 self.phase = self.PHASE_GG
 
         else:
@@ -323,7 +321,7 @@ class Engine:
 
         # if end of game, then no more actions
         if self.phase == self.PHASE_GG:
-            # logger.info('no actions for GG')
+            # self.loggerinfo('no actions for GG')
             actions = []
         # and if the phase is not showdown, then players
         # can act
@@ -372,7 +370,7 @@ class Engine:
                 # # else if there has been no action then
                 # # you can just check or start betting
 
-        logger.info('available actions = {}'.format(actions))
+        self.loggerinfo('available actions = {}'.format(actions))
         return actions
 
     def do(self, action):
@@ -400,10 +398,10 @@ class Engine:
             - player balance
 
         '''
-        # logger.info('Player {} phase {} DO {}'.format(self.q[0][0], self.phase, action))
+        # self.loggerinfo('Player {} phase {} DO {}'.format(self.q[0][0], self.phase, action))
 
         if not action[0]:
-            logger.warn('no action received')
+            self.loggerwarn('no action received')
             return
 
         if action[0] not in ['a', 'b', 'f', 'k', 'c', 'r', 'gg', 'h', 'sb', 'bb']:
@@ -412,16 +410,16 @@ class Engine:
         if action[0] == 'h':
             hand = [action[2], action[3]] if len(action) > 2 else ['__', '__']
             self.data[int(action[1])]['hand'] = hand
-            logger.info('setting hand for player {} to {}'.format(action[1], hand))
+            self.loggerinfo('setting hand for player {} to {}'.format(action[1], hand))
             # nothing should change when setting hand
             return
 
         phase_data = getattr(self, self.phase)
 
         if action[0] == 'gg':
-            logger.info('GG for player {}'.format(action[1]))
+            self.loggerinfo('GG for player {}'.format(action[1]))
             if int(action[1]) < 0:
-                logger.info('players draw!')
+                self.loggerinfo('players draw!')
                 # todo distribute monies correctly per pot
                 statuses = Counter([d['status'] for d in self.data.values()])
                 players_still_in = statuses['allin'] + statuses['in']
@@ -431,12 +429,12 @@ class Engine:
                     if 'in' in self.data[s]['status']:
                         p['balance'] += cut
                         self.winner.append(s)
-                        logger.info('GG winnings {} draw for = {}'.format(s, cut))
+                        self.loggerinfo('GG winnings {} draw for = {}'.format(s, cut))
             else:
                 p = self.players[int(action[1])]
                 p['balance'] += self.pot
                 self.winner = [int(action[1])]
-                logger.info('GG winnings = {}'.format(self.pot))
+                self.loggerinfo('GG winnings = {}'.format(self.pot))
             phase_data['finished'] = True
             return
 
@@ -452,11 +450,11 @@ class Engine:
             })
             if int(action[1]) >= p['balance']:
                 action[0] = 'a'
-                logger.warn('allin during SB')
+                self.loggerwarn('allin during SB')
             else:
                 d['contrib'] += action[1]
                 self.rotate()
-                logger.debug('Did action SB')
+                self.loggerdebug('Did action SB')
 
         if action[0] == 'bb':
             d['is_BB'] = True
@@ -467,17 +465,17 @@ class Engine:
             })
             if int(action[1]) >= p['balance']:
                 action[0] = 'a'
-                logger.warn('allin during BB')
+                self.loggerwarn('allin during BB')
             else:
                 d['contrib'] += action[1]
                 self.rotate()
-                logger.debug('Did action BB')
+                self.loggerdebug('Did action BB')
 
         contribs_all = [pd['contrib'] for pd in self.data.values()]
         total_contribs = sum(contribs_all)
         max_contrib = max(contribs_all)
         contrib_short = max_contrib - d['contrib']
-        # logger.debug('total_contrib={} and max_contrib={} and contrib_short={}'.format(
+        # self.loggerdebug('total_contrib={} and max_contrib={} and contrib_short={}'.format(
         #     total_contribs, max_contrib, contrib_short))
 
         # facing_aggro if contrib_short AND not limping during preflop
@@ -488,7 +486,7 @@ class Engine:
             balance_left = p['balance'] - d['contrib']
             faced_aggro = True
             pot_odds = min(balance_left, contrib_short) / (self.pot + total_contribs)
-        logger.debug('faced_aggro? {}'.format(faced_aggro))
+        self.loggerdebug('faced_aggro? {}'.format(faced_aggro))
 
         if action[0] == 'f':
             d['status'] = 'fold'
@@ -499,7 +497,7 @@ class Engine:
                 'rvl': self.rivals,
             })
             d['hand'] = ['  ', '  ']
-            logger.debug('Did action fold')
+            self.loggerdebug('Did action fold')
             self.rotate()
 
         if action[0] in ['b', 'r']:
@@ -509,12 +507,12 @@ class Engine:
 
             # player raising on BB gives error (since it is the same)
             if not int(action[1]) - contrib_short and 'is_BB' not in d and self.phase == self.PHASE_PREFLOP:
-                # logger.warn('changed bet/raise that is equal to maxcontrib instead to a call')
+                # self.loggerwarn('changed bet/raise that is equal to maxcontrib instead to a call')
                 action[0] = 'c'
 
             # change to allin if it is all the money
             if int(action[1]) >= p['balance'] - d['contrib']:
-                # logger.warn('changed b/r to allin as it is everything player has')
+                # self.loggerwarn('changed b/r to allin as it is everything player has')
                 action[0] = 'a'
             else:
                 # cannot bet if you are required to put in (e.g. somebody else made bet)
@@ -523,7 +521,7 @@ class Engine:
                     actions_player.extend(''.join(pa['action'] for pa in action_player[self.phase]))
                 action[0] = 'r' if set(['s', 'l', 'b']) & set(actions_player) else 'b'
                 action_name = 'raise' if action[0] == 'r' else 'bet'
-                # logger.error('action is {} from {} & {}'.format(action[0], set(['s', 'l', 'b']), set(actions_player)))
+                # self.loggererror('action is {} from {} & {}'.format(action[0], set(['s', 'l', 'b']), set(actions_player)))
 
                 bet_to_pot = int(action[1]) / (self.pot + total_contribs)
                 d[self.phase].append({
@@ -534,13 +532,13 @@ class Engine:
                     'rvl': self.rivals,
                 })
                 d['contrib'] += int(action[1])
-                logger.debug('Did action bet/raise {}'.format(action[0]))
+                self.loggerdebug('Did action bet/raise {}'.format(action[0]))
                 self.rotate()
 
         if action[0] in ['k', 'c']:
             # if amt to call is more than what player has, it is allin
             if contrib_short >= p['balance']:
-                logger.warn('changed k/c to allin as player is out of money')
+                self.loggerwarn('changed k/c to allin as player is out of money')
                 action[0] = 'a'
             else:
                 # cannot check if short
@@ -557,7 +555,7 @@ class Engine:
                     'rvl': self.rivals,
                 })
                 d['contrib'] += contrib_short
-                logger.debug('Did action {} (contrib: {})'.format(action[0], contrib_short))
+                self.loggerdebug('Did action {} (contrib: {})'.format(action[0], contrib_short))
                 self.rotate()
 
         if action[0] == 'a':
@@ -570,7 +568,7 @@ class Engine:
             })
             d['status'] = 'allin'
             d['contrib'] = p['balance']
-            logger.debug('Did action allin')
+            self.loggerdebug('Did action allin')
             self.rotate()
 
         if self.is_round_finished():
@@ -600,11 +598,11 @@ class Engine:
         for s, d in self.data.items():
             if returned and d['contrib'] == max_first:
                 d['contrib'] -= returned
-                logger.debug('Returned {} as unmatched for player {}'.format(returned, s))
+                self.loggerdebug('Returned {} as unmatched for player {}'.format(returned, s))
             self.pot += d['contrib']
             self.players[s]['balance'] -= d['contrib']
             d['matched'] += d['contrib']
-            # logger.info('player {} matched: {} (added {})'.format(s, d['matched'], d['contrib']))
+            # self.loggerinfo('player {} matched: {} (added {})'.format(s, d['matched'], d['contrib']))
             d['contrib'] = 0
 
     def is_round_finished(self):
@@ -618,10 +616,10 @@ class Engine:
         in_contribs = Counter()
         allin_contribs = Counter()
         for s, d in self.data.items():
-            # logger.debug('{} is {}'.format(s, d))
+            # self.loggerdebug('{} is {}'.format(s, d))
             if d['status'] == 'in':
                 if not d[self.phase]:
-                    # logger.debug('#{} has not acted yet'.format(s))
+                    # self.loggerdebug('#{} has not acted yet'.format(s))
                     return False
                 elif self.phase == self.PHASE_PREFLOP and 'is_BB' in d and len(d[self.phase]) < 2:
                     is_bb_finished = False
@@ -630,18 +628,18 @@ class Engine:
                 allin_contribs.update([d['contrib']])
 
         if len(list(in_contribs)) > 1:
-            # logger.debug('bets are not equal')
+            # self.loggerdebug('bets are not equal')
             return False
 
         elif list(in_contribs) and len(list(allin_contribs)) and min(list(in_contribs)) < max(list(allin_contribs)):
-            # logger.debug('still have to call allin')
+            # self.loggerdebug('still have to call allin')
             return False
 
         elif not is_bb_finished:
-            # logger.debug('BB still has to act')
+            # self.loggerdebug('BB still has to act')
             return False
 
-        logger.info('round is finished')
+        self.loggerinfo('round is finished')
 
         """Helper to quickly check if all players are allin
         or if one player is allin and another called
@@ -653,7 +651,7 @@ class Engine:
         statuses = Counter([d['status'] for d in self.data.values()])
         if statuses['allin'] and statuses['in'] <= 1:
             self.go_to_showdown = True
-            logger.debug('go_to_showdown {} players are allin'.format(statuses['allin']))
+            self.loggerdebug('go_to_showdown {} players are allin'.format(statuses['allin']))
 
         return True
 
@@ -674,30 +672,30 @@ class Engine:
          ** allins still need to follow the river and showdown
         """
         if self.phase == self.PHASE_SHOWDOWN:
-            logger.debug('Game already in showdown')
+            self.loggerdebug('Game already in showdown')
             return
 
         statuses = Counter([d['status'] for d in self.data.values()])
-        # logger.debug('statuses {}'.format(statuses))
+        # self.loggerdebug('statuses {}'.format(statuses))
         if (statuses['in'] + statuses['allin']) <= 1:
-            logger.info('Game finished with only 1 player left "in"')
+            self.loggerinfo('Game finished with only 1 player left "in"')
             self.gather_the_money()
             self.phase = self.PHASE_SHOWDOWN
             return
 
     def adjust_strength(self, s, d, a):
         """Adjust the min/max tuple of strength based on action taken"""
-        logger.info('adjusting strength for action {}'.format(a))
+        self.loggerinfo('adjusting strength for action {}'.format(a))
 
         if a in ['f', 'k', 'sb', 'bb']:
-            logger.debug('no aggression faced')
+            self.loggerdebug('no aggression faced')
             return
 
         stats = d['stats']['actions']
-        logger.debug('p stats actions: {}'.format(stats))
+        self.loggerdebug('p stats actions: {}'.format(stats))
 
         dist = ES.dist_player_stats(stats)
-        logger.debug('p dist: {}'.format(dist))
+        self.loggerdebug('p dist: {}'.format(dist))
 
         # find first available lower bound
         # from where action is met
@@ -706,17 +704,17 @@ class Engine:
         for o in ['c', 'b', 'r', 'a']:
             if o == a:
                 action_found = True
-                logger.debug('action found')
+                self.loggerdebug('action found')
             if not action_found:
-                logger.debug('action not found yet...')
+                self.loggerdebug('action not found yet...')
                 continue
             dist_vals = [k for k, v in dist.items() if v == o]
-            logger.debug('dist_vals {}'.format(dist_vals))
+            self.loggerdebug('dist_vals {}'.format(dist_vals))
             if not dist_vals:
-                logger.debug('no dist_vals...')
+                self.loggerdebug('no dist_vals...')
                 continue
             lower_bound = min(dist_vals)
-            logger.debug('lower bound = {} (with {})'.format(lower_bound, o))
+            self.loggerdebug('lower bound = {} (with {})'.format(lower_bound, o))
             break
 
         # update strength to fold limit
@@ -731,7 +729,7 @@ class Engine:
         # 0000000001
 
         new_strength = d['strength'] * (1 - lower_bound)
-        logger.debug('new strength = {} (old {} * {})'.format(new_strength, d['strength'], (1 - lower_bound)))
+        self.loggerdebug('new strength = {} (old {} * {})'.format(new_strength, d['strength'], (1 - lower_bound)))
         d['strength'] = new_strength
 
     @property

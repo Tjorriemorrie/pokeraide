@@ -14,7 +14,7 @@ logger = logging.getLogger()
 
 class PocketRankings:
 
-    FILE = join(dirname(realpath(__file__)), 'pocket_rankings')
+    FILE = join(dirname(realpath(__file__)), 'pocket_rankings.shlv')
 
     @classmethod
     def run(cls):
@@ -29,7 +29,7 @@ class PocketRankings:
             pockets_rankings = SortedDict(neg, shlv['pocket_rankings'])
             # for ps, pc in pockets_ranks.items():
             #     logger.info('{} = {}'.format(ps, pc))
-            logger.info('pocket rankings loaded and sorted')
+            logger.info('{} pocket rankings loaded and sorted'.format(len(pockets_rankings)))
             return pockets_rankings
 
     def all_combinations(self):
@@ -54,20 +54,4 @@ class PocketRankings:
 
         with shelve.open(self.FILE) as shlv:
             shlv['pocket_rankings'] = pocket_rankings
-            logger.info('saved to {}'.format(file_name))
-
-    def create_abstracts(self):
-        # todo deprecated
-        combs = self.all_combinations()
-        abstracts = set()
-        pocket_abstracts = {}
-        for comb in combs:
-            abstract = ''.join(sorted([comb[0][0], comb[1][0]]))
-            if comb[0][0] != comb[1][0] and comb[0][1] == comb[1][1]:
-                abstract += 's'
-            pocket_abstracts[comb] = abstract
-            abstracts.add(abstract)
-            logger.debug('{} => {}'.format(comb, abstract))
-        with shelve.open('/code/pocket_abstracts.shlv') as shlv:
-            shlv['pocket_abstracts'] = pocket_abstracts
-        logger.info('{} abstracts'.format(len(abstracts)))
+            logger.info('saved to {}'.format(self.FILE))
