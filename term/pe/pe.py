@@ -16,16 +16,23 @@ class PE:
     SAMPLE_SIZE = 0.10
 
     @classmethod
-    def hand_strength(cls, hand):
-        """Used for calculating the hand strengths for ranking pockets"""
-        pockets = [list(hand), ['__', '__']]
-        board = ['__'] * 5
+    def req_equities(cls, board, pockets):
+        """Makes request to service for PE"""
+        logger.debug('requesting equities')
         res = requests.post('http://127.0.0.1:5000/', json={
             'pockets': pockets,
             'board': board,
         })
         res.raise_for_status()
         equities = res.json()
+        return equities
+
+    @classmethod
+    def hand_strength(cls, hand):
+        """Used for calculating the hand strengths for ranking pockets"""
+        pockets = [list(hand), ['__', '__']]
+        board = ['__'] * 5
+        equities = PE.req_equities(board, pockets)
         hand_strength = equities['eval'][0]['ev'] / 1000
         logger.debug('pocket {} strength: {}'.format(hand, hand_strength))
         return hand_strength
@@ -47,7 +54,6 @@ class PE:
             dict: seat: equity
         """
         # logger.info('calculating showdown equities...')
-
         seats = []
         hand_ranges = []
         for s, d in engine.data.items():
@@ -84,17 +90,16 @@ class PE:
         logger.info('too many players still in, defaulting to random pockets for foes')
         board = engine.board + ['__'] * (5 - len(engine.board))
         pockets = [engine.data[s]['hand'] for s in seats]
-        # logger.info('pockets = {} and board = {}'.format(pockets, board))
+        # logger.info('seats = {} and pockets = {} and board = {}'.format(seats, pockets, board))
 
-        eval = cls.poker_eval(cls, board=board, pockets=pockets,
-                              iterations=cls.ITERATIONS_FAST, game=cls.GAME)
+        eval_res = PE.req_equities(board, pockets)
 
         equities = {}
-        for s, e in zip(seats, eval['eval']):
+        for s, e in zip(seats, eval_res['eval']):
             # logger.debug('s={} e={}'.format(s, e))
             equities[s] = e['ev'] / 1000
 
-        # logger.info('final equities: {}'.format(equities))
+        logger.info('final equities: {}'.format(equities))
         return equities
 
     @classmethod
@@ -172,7 +177,6 @@ class PE:
         board = [b1, b2, b3, b5, b5]
         hrp = [[c1, c2], [c3, c4]]
         # logger.debug('reconstructed b= {} & c= {}'.format(board, hrp))
-        eval = cls.poker_eval(cls, board=board, pockets=hrp,
-                              iterations=cls.ITERATIONS_FAST, game=cls.GAME)
+        equities = PE.req_equities(board, hrp)
         # logger.debug('{} => {}'.format(hrp, [e['ev'] for e in eval['eval']]))
-        return eval
+        return equities

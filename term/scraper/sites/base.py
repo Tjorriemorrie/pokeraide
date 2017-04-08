@@ -132,21 +132,38 @@ class BaseSite:
         self.logger.info('mse not above threshold of {}'.format(threshold))
         return None
 
-    def match_template(self, img, template, threshold):
+    def match_template(self, img, template, threshold, multiple=False):
         """Matches a template
         Converts it to grayscale
         Checks against provided threshold if matched.
         Return None when below threshold"""
         template = template.convert('L')
         res = cv2.matchTemplate(np.array(img), np.array(template), cv2.TM_CCOEFF_NORMED)
-        mml = cv2.minMaxLoc(res)
-        max_loc = mml[1] >= threshold and mml[-1]
-        self.logger.info('template match found: {} [{:.2f} >= {:.2f}]'.format(max_loc, mml[1], threshold))
-        return max_loc
-
+        if not multiple:
+            mml = cv2.minMaxLoc(res)
+            max_loc = mml[1] >= threshold and mml[-1]
+            self.logger.info('template match found: {} [{:.2f} >= {:.2f}]'.format(max_loc, mml[1], threshold))
+            return max_loc and list(max_loc)
+        else:
+            locs = np.where(res >= threshold)
+            locs = [list(l) for l in zip(*locs[::-1])]
+            self.logger.info('template match found {:d} with threshold {:.2f}'.format(len(locs), threshold))
+            return list(map(list, locs))
 
 class SiteException(Exception):
     pass
 
 class NoDealerButtonError(Exception):
+    pass
+
+class PocketError(Exception):
+    pass
+
+class BalancesError(Exception):
+    pass
+
+class ContribError(Exception):
+    pass
+
+class ThinkBarError(Exception):
     pass

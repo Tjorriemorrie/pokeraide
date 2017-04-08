@@ -20,47 +20,48 @@ logger = logging.getLogger()
 
 class MonteCarlo:
 
-    TIMEOUT = 1 << 4
-    ENGINE_CHECKSUM = None
-
-    def __init__(self, engine=None):
+    def __init__(self, engine=None, timeout=None, hero=None):
         if not engine:
             logger.info('engine not given, loading from file...')
-            self.load_engine()
+            self.engine_checksum = None
+            self.load_engine(hero)
         else:
             logger.info('engine given')
-            self.init(engine)
+            self.init(engine, hero)
+        self.timeout = timeout or 1
 
     @retrace.retry(on_exception=(EOFError, KeyError), interval=0.1, limit=None)
-    def load_engine(self):
+    def load_engine(self, hero):
         with shelve.open(Engine.FILE) as shlv:
-            if shlv['hash'] != self.ENGINE_CHECKSUM:
+            if shlv['hash'] != self.engine_checksum:
                 logger.info('loading engine from file...')
-                self.ENGINE_CHECKSUM = shlv['hash']
-                self.init(shlv['engine'])
-                self.TIMEOUT = 1
+                self.engine_checksum = shlv['hash']
+                self.init(shlv['engine'], hero)
 
-    def init(self, engine):
+    def init(self, engine, hero):
         logger.info('init state')
         self.engine = engine
-        self.hero = self.engine.q[0][0]
+        self.hero = hero or self.engine.q[0][0]
         self.hero_pocket = self.engine.data[self.hero]['hand']
         logger.info('HERO is at seat {} with {}'.format(self.hero, self.hero_pocket))
 
         self.is_complete = False
         self.convergence_size = 11
-        self.convergence = {
-            'deq': deque(maxlen=self.convergence_size),
-        }
         self.watched = False
+        self.init_tree()
 
+    def init_tree(self):
+        """create the tree. Add a root; available action will add the first level of children"""
         self.tree = Tree()
         root = self.tree.create_node('root', identifier='0_root', data={'traversed': 0, 'ev': 0})
         # logger.info('tree:\n{}'.format(self.tree.show()))
+        self.convergence = {
+            'deq': deque(maxlen=self.convergence_size),
+        }
 
     def watch(self):
         """Runs when engine file changes. Just kicks off run for 3s sprints"""
-        logger.info('Monte Carlo watching every {}s...'.format(self.TIMEOUT))
+        logger.info('Monte Carlo watching every {}s...'.format(self.timeout))
         while True:
 
             # loads new engine file if checksum changed
@@ -98,9 +99,9 @@ class MonteCarlo:
                 continue
 
             # run a few sims
-            logger.debug('running now with timeout {}'.format(self.TIMEOUT))
+            logger.debug('running now with timeout {}'.format(self.timeout))
             self.run()
-            self.TIMEOUT += 0.1
+            self.timeout += 0.1
 
     def run(self):
         """Run simulations
@@ -119,7 +120,7 @@ class MonteCarlo:
         """
         logger.info('Monte Carlo started')
         time_start = time.time()
-        while not self.is_complete and time.time() - time_start < self.TIMEOUT:
+        while not self.is_complete and time.time() - time_start < self.timeout:
             self.is_complete = True
             leaves = self.tree.paths_to_leaves()
             logger.debug('leaves from tree: {}'.format(len(leaves)))
@@ -137,7 +138,7 @@ class MonteCarlo:
                 # input('>>')
                 # if random.random() < 0.001:
                 #     input('random check')
-                if time.time() - time_start >= self.TIMEOUT:
+                if time.time() - time_start >= self.timeout:
                     # logger.warn('time is up for processing!')
                     self.is_complete = False
                     break
@@ -192,7 +193,7 @@ class MonteCarlo:
         # logger.error('deq: {}'.format(list(self.convergence['deq'])))
 
         logger.error('')
-        logger.error('Timeout: {}'.format(round(self.TIMEOUT, 1)))
+        logger.error('Timeout: {}'.format(round(self.timeout, 1)))
         logger.error('Traversed: {}'.format(sum_traversed))
         deq_cnts = Counter(list(self.convergence['deq']))
         # logger.error('deq: {}'.format(deq_cnts.most_common()))
@@ -507,6 +508,7 @@ class MonteCarlo:
         # load stats (codes with counts)
         stats = ES.player_stats(e, s)
         max_contrib = max(pd['contrib'] for pd in e.data.values())
+        contrib_short = max_contrib - d['contrib']
 
         # allin needs to be the doc count
         # where bets and raises result in allin, add those prob dists to this
@@ -528,19 +530,35 @@ class MonteCarlo:
             }
 
             if a in ['bet', 'raise']:
+                btps_and_amts = []
                 total_pot = sum(pd['contrib'] for pd in e.data.values()) + e.pot
-                # logger.debug('pot amount for btp calcs is {}'.format(total_pot))
+                logger.debug('pot amount for btp calcs is {}'.format(total_pot))
+
+                # add min bet
+                # todo only valid if action = 'bet', how to skip raise amount if bet
+                # btps_and_amts.append(('min', contrib_short + self.engine.bb_amt))
+                # logger.debug('added minimum bet of {}'.format(btps_and_amts[-1]))
+
+                # add half pot bet
+                btps_and_amts.append(('half', total_pot * 0.50))
+                logger.debug('added half pot bet of {}'.format(btps_and_amts[-1]))
+
+                # add pot bet
+                btps_and_amts.append(('pot', total_pot * 1.00))
+                logger.debug('added pot bet of {}'.format(btps_and_amts[-1]))
 
                 # logger.debug('stats for btp calcs is {}'.format(stats['btps'].values()))
-                btps_and_amts = [(btp, int(total_pot * btp)) for btp in stats['btps'].values()]
+                # todo skipping bet to percentiles
+                # btps_and_amts = [(btp, int(total_pot * btp)) for btp in stats['btps'].values()]
                 # logger.debug('btps_and_amts {}'.format(btps_and_amts))
 
+                # todo skipping balance betting
                 # foes balances
-                balances = [pp['balance'] - pd['contrib'] for pp, pd in zip(e.players.values(), e.data.values())
-                    if pd['status'] == 'in' and pp['name'] != p['name'] and pp['balance'] - pd['contrib'] > 0]
+                # balances = [pp['balance'] - pd['contrib'] for pp, pd in zip(e.players.values(), e.data.values())
+                #     if pd['status'] == 'in' and pp['name'] != p['name'] and pp['balance'] - pd['contrib'] > 0]
 
                 # bet to maximise other stacks if hero is exactly 'in'
-                if balances and d['status'] == 'in':
+                if False and balances and d['status'] == 'in':
                     # minimum balance of all (incl hero)
                     min_balance = min(balance_left, *balances)
                     min_bal_btp = ('minbal', int(min_balance / e.rounds_left ** 2))
@@ -553,8 +571,8 @@ class MonteCarlo:
                     btps_and_amts.insert(1, max_bal_btp)
                     # logger.debug('maximum stack bet = {} for maxbal {}'.format(max_bal_btp, max_balance))
 
-                # round bets to a BB
-                btps_and_amts = [(btp, amt // self.engine.bb_amt * self.engine.bb_amt + self.engine.bb_amt)
+                # round bets up to a BB
+                btps_and_amts = [(btp, -(amt // -self.engine.bb_amt) * self.engine.bb_amt)
                                  for btp, amt in btps_and_amts]
 
                 betting_info = []
@@ -583,7 +601,7 @@ class MonteCarlo:
                     # all good, can have this bet as option (just dist its stat)
                     node_data_copy = deepcopy(node_data)
                     node_data_copy['stats'] /= len(btps_and_amts)
-                    node_data_copy['action'] = '{}_{}%'.format(a, btp)
+                    node_data_copy['action'] = '{}_{}'.format(a, btp)
                     node_data_copy['amount'] = amt
                     action_nodes.append(node_data_copy)
                     amt_prev = amt

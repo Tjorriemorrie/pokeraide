@@ -27,17 +27,15 @@ cli.add_command(table)
 
 
 @click.command()
+@click.option('--observe', is_flag=True)
 @click.option('--replay', is_flag=True)
 @click.argument('site')
 @click.argument('seats', type=click.INT)
 @click.pass_context
-def scrape(ctx, site, seats, replay):
+def scrape(ctx, site, seats, replay, observe):
     from scraper.main import Scraper
-    scraper = Scraper(site, seats, debug=ctx.obj['debug'])
-    if replay:
-        scraper.replay()
-    else:
-        scraper.run()
+    scraper = Scraper(site, seats, debug=ctx.obj['debug'], replay=replay, observe=observe)
+    scraper.run()
 cli.add_command(scrape)
 
 
