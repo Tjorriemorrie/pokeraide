@@ -10,9 +10,7 @@ from sortedcontainers import SortedDict
 from pocket_rankings.pocket_rankings import PocketRankings
 
 
-logger = logging.getLogger()
-for _ in ("boto", "elasticsearch", "urllib3"):
-    logging.getLogger(_).setLevel(logging.ERROR)
+logger = logging.getLogger(__name__)
 
 
 connections.create_connection(hosts=['localhost'])

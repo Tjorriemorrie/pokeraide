@@ -15,7 +15,7 @@ from es.es import ES
 from pe.pe import PE
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class MonteCarlo:
@@ -58,6 +58,7 @@ class MonteCarlo:
         self.convergence = {
             'deq': deque(maxlen=self.convergence_size),
         }
+        # input('new tree')
 
     def watch(self):
         """Runs when engine file changes. Just kicks off run for 3s sprints"""
@@ -132,14 +133,14 @@ class MonteCarlo:
             logger.debug('{} leaves are now sorted by rank'.format(len(leaves)))
             leaves.sort(key=len)
             logger.debug('{} leaves are now sorted by length'.format(len(leaves)))
-            for leave in leaves:
-                self.run_item(leave)
+            for leaf in leaves:
+                self.run_item(leaf)
                 # self.show_best_action()
                 # input('>>')
                 # if random.random() < 0.001:
                 #     input('random check')
                 if time.time() - time_start >= self.timeout:
-                    # logger.warn('time is up for processing!')
+                    logger.info('time is up for processing!')
                     self.is_complete = False
                     break
         duration = time.time() - time_start
@@ -147,7 +148,7 @@ class MonteCarlo:
         logger.warn('Monte Carlo ended after taking {}s'.format(int(duration)))
 
     def run_item(self, path):
-        logger.debug('run item args: {}'.format(path))
+        logger.debug('running this path: {}'.format(path))
         e = deepcopy(self.engine)
         e.mc = True
         """To calculate the investment for the loss EV, the total amounts used till end is required. Cannot
@@ -156,12 +157,12 @@ class MonteCarlo:
          Need to add current contrib
         """
         e.matched_start = e.data[self.hero]['matched'] + e.data[self.hero]['contrib']
-        # logger.info('starting matched = {} from {} + {}'.format(
-        #     e.matched_start, e.data[e.q[0][0]]['matched'], e.data[e.q[0][0]]['contrib']))
+        logger.info('hero starting with matched = {} from {} + {}'.format(
+            e.matched_start, e.data[self.hero]['matched'], e.data[self.hero]['contrib']))
 
         # self.tree.show()
         self.fast_forward(e, path)
-        logger.info('\n{}'.format('=' * 150))
+        logger.info('{}'.format('-' * 200))
         # input('check item')
 
     def show_best_action(self):
@@ -267,7 +268,7 @@ class MonteCarlo:
         # was created with other children (but not most probable at that time to be proc as child)
         # if hero folding, then make this node a leaf node with fold eq
         # exiting before adding children alleviates the need to remove the immediately again thereafter
-        # bug: cannot use engine.q as it alread rotated after taking action getting here
+        # bug: cannot use engine.q as it already rotated after taking action getting here
         if not n.is_root() and n.data['action'] == 'fold' and self.hero == n.data['seat']:
             winnings, losses = self.net(e)
             result = {
@@ -469,11 +470,11 @@ class MonteCarlo:
 
         Scale non-fold probabilities even though it should not have an effect.
         """
-        # logger.info('adding actions to {}'.format(parent.tag))
+        logger.info('adding actions to {}'.format(parent.tag))
+        actions = e.available_actions()
         s, p = e.q[0]
         d = e.data[s]
         balance_left = p['balance'] - d['contrib']
-        actions = e.available_actions()
 
         if not actions:
             logger.warn('no actions to add to node')
@@ -639,6 +640,7 @@ class MonteCarlo:
             if action_node['action'] != 'fold':
                 action_node['stats'] = max(0.01, action_node['stats'] / total_stats * non_fold_equity)
             self.tree.create_node(tag=node_tag, identifier=identifier, parent=parent.identifier, data=action_node)
-            # logger.debug('new {} for {} with data {}'.format(node_tag, s, action_node))
-        # logger.info('{} node actions added'.format(len(action_nodes)))
+            logger.debug('new {} for {} with data {}'.format(node_tag, s, action_node))
+        logger.info('{} node actions added'.format(len(action_nodes)))
+        # (parent.tag == 'call_7_preflop') and input('check child nodes for 5!')
 

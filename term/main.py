@@ -1,5 +1,7 @@
 import click
-import logging
+import logging.config
+
+from loggingconfig import LOGGING_CONFIG
 
 
 @click.group()
@@ -39,12 +41,20 @@ def scrape(ctx, site, seats, replay, observe):
 cli.add_command(scrape)
 
 
+@click.command()
+@click.argument('site')
+@click.argument('seats', type=click.INT)
+def cards(site, seats):
+    from scraper.main import Scraper
+    scraper = Scraper(site, seats)
+    scraper.cards()
+cli.add_command(cards)
+
+
 if __name__ == '__main__':
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(levelname)-7s - [%(filename)s:%(funcName)s] %(message)s')
-    for _ in ('boto', 'elasticsearch', 'urllib3', 'PIL', 'requests'):
-        logging.getLogger(_).setLevel(logging.CRITICAL)
+    logging.config.dictConfig(LOGGING_CONFIG)
+    # for _ in ('boto', 'elasticsearch', 'urllib3', 'PIL', 'requests'):
+    #     logging.getLogger(_).setLevel(logging.CRITICAL)
     # for key in logging.Logger.manager.loggerDict:
     #     print(key)
 

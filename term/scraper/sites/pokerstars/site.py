@@ -5,7 +5,8 @@ import numpy as np
 from operator import xor
 import os.path
 
-from scraper.sites.base import BaseSite, SiteException, NoDealerButtonError, PocketError, BalancesError, ContribError, ThinkBarError
+from scraper.sites.base import BaseSite, SiteException, NoDealerButtonError, PocketError, BalancesError, ContribError, \
+    ThinkBarError, BoardError
 
 
 class PokerStars(BaseSite):
@@ -15,6 +16,7 @@ class PokerStars(BaseSite):
     PWD = os.path.dirname(os.path.realpath(__file__))
     PATH_IMAGES = os.path.join(PWD, 'img')
     FILE_COORDS = os.path.join(PWD, 'coords.yml')
+    FILE_CARDS_MAP = os.path.join(PWD, 'cards_map.yml')
 
     def __init__(self, *args, **kwargs):
         """TLC box is crop box coords"""
@@ -255,22 +257,55 @@ class PokerStars(BaseSite):
         self.logger.info('Found {} contribs'.format(len(contribs)))
         return contribs
 
-    def parse_thinking(self, img):
-        """Parses board to see if player is thinking."""
-        coords = self.coords['think_bar']
-        self.logger.info('parsing think_bar with {}'.format(coords))
-        template = self.img['think_bar']
-        threshold = coords['th_tpl']
+    def parse_thinking_player(self, img):
+        """Parses board to see if player is thinking by looking at timing bar. First check
+        green bar then for red bar."""
+        for color in ['green', 'red']:
+            coords = self.coords['think_bar'][color]
+            self.logger.info('parsing think_bar for {} with {}'.format(color, coords))
+            template = self.img['think_bar_{}'.format(color)]
+            threshold = coords['th_tpl']
 
-        loc = self.match_template(img, template, threshold)
-        if not loc:
-            raise ThinkBarError('Could not locate any think bar')
+            loc = self.match_template(img, template, threshold)
+            if not loc:
+                self.logger.info('Could not locate any {} think bar'.format(color))
+                continue
 
-        contribs = {}
-        for s, seat_loc in coords['seats'].items():
-            if seat_loc == loc:
-                self.logger.info('{} is currently thinking'.format(s))
-                return s
-        raise ValueError('Could not locate think bar (got {})'.format(loc))
+            contribs = {}
+            for s, seat_loc in coords['seats'].items():
+                if seat_loc == loc:
+                    self.logger.info('{} is currently thinking'.format(s))
+                    return s
+            raise ValueError('Unknown {} think bar at {}'.format(color, loc))
+
+        raise ThinkBarError('Could not locate think bar')
 
     def parse_board(self, img):
+        """Parses the cards on the board. Parse it one by one"""
+        card_shape = self.coords['card_shape']
+        coords = self.coords['board']
+        board = []
+        for i, loc_board in coords['cards'].items():
+            loc = (
+                loc_board[0],
+                loc_board[1],
+                loc_board[0] + card_shape[0],
+                loc_board[1] + card_shape[1]
+            )
+            img_board = img.crop(loc)
+            if self.debug:
+                img_board.save(os.path.join(self.PWD, 'board_{}.png'.format(i)))
+            loc_card = self.match_template(self.img['cards_map'], img_board, coords['th_tpl'])
+            self.logger.debug('loc_card = {}'.format(loc_card))
+            if not loc_card:
+                raise BoardError('Board card {} not identified on cards_map image'.format(i))
+            card_name = self.cards_map['{},{}'.format(*loc_card)]
+            self.logger.debug('card_name = {}'.format(card_name))
+            if card_name.startswith('board'):
+                self.logger.debug('no card at that board position {}'.format(i))
+                break
+            board.append(card_name)
+            self.logger.debug('Identified card {} at board pos {}'.format(card_name, i))
+
+        self.logger.debug('Board = {}'.format(board))
+        return board

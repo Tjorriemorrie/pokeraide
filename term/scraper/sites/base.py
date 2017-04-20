@@ -24,10 +24,11 @@ class BaseSite:
 
         self.load_templates()
         self.load_coordinates()
+        self.load_cards_map()
 
-        ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'a']
-        suits = ['s', 'd', 'c', 'h']
-        self.cards_names = ['{}{}'.format(r, s) for r, s in product(ranks, suits)]
+        self.ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'a']
+        self.suits = ['s', 'd', 'c', 'h']
+        self.cards_names = ['{}{}'.format(r, s) for r, s in product(self.ranks, self.suits)]
 
     def load_templates(self):
         """Loads images contents onto instance"""
@@ -50,6 +51,14 @@ class BaseSite:
             coords = ruamel.yaml.safe_load(f)
         self.coords = coords[self.seats]
         self.logger.debug(self.coords)
+
+    def load_cards_map(self):
+        """Load cards map"""
+        self.logger.info('Loading cards map from {}'.format(self.FILE_CARDS_MAP))
+        with open(self.FILE_CARDS_MAP, 'r') as f:
+            cards_map = ruamel.yaml.safe_load(f)
+        self.cards_map = cards_map
+        self.logger.debug('Cards map: {}'.format(cards_map))
 
     def rotate(self, image, angle):
         """Rotates image"""
@@ -150,6 +159,45 @@ class BaseSite:
             self.logger.info('template match found {:d} with threshold {:.2f}'.format(len(locs), threshold))
             return list(map(list, locs))
 
+    def generate_cards(self):
+        """Generate cards for site"""
+        card_shape = self.coords['card_shape']
+        cards_shape = (card_shape[0] * 13, card_shape[1] * 5)
+        self.logger.info('Generating cards on {} sheet'.format(cards_shape))
+
+        img = Image.new('L', cards_shape)
+        x = 0
+        y = 0
+        cards_map = {}
+
+        # add deck
+        for rank in self.ranks:
+            y = 0
+            for suit in self.suits:
+                card_name = '{}{}'.format(rank, suit)
+                self.logger.debug('adding card {} at {}, {}'.format(card_name, x, y))
+                img.paste(self.img[card_name], (x, y))
+                cards_map['{},{}'.format(x, y)] = card_name
+                y += card_shape[1]
+            x += card_shape[0]
+
+        # add other
+        for b in ['board']:
+            x = 0
+            y = card_shape[1] * 4
+            for i in range(5):
+                card_name = 'board_{}'.format(i + 1)
+                self.logger.debug('adding card {} at {}, {}'.format(card_name, x, y))
+                img.paste(self.img[card_name], (x, y))
+                cards_map['{},{}'.format(x, y)] = card_name
+                x += card_shape[0]
+
+        img.save(os.path.join(self.PWD, 'img', 'cards_map.png'))
+
+        with open(self.FILE_CARDS_MAP, 'w') as f:
+            cards_map = ruamel.yaml.dump(cards_map, f)
+
+
 class SiteException(Exception):
     pass
 
@@ -166,4 +214,7 @@ class ContribError(Exception):
     pass
 
 class ThinkBarError(Exception):
+    pass
+
+class BoardError(Exception):
     pass

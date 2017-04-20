@@ -8,7 +8,7 @@ from sortedcontainers import SortedList
 import time
 
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 class PE:
