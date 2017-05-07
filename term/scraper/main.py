@@ -140,13 +140,6 @@ class Scraper:
                         input('$ what is this board error?')
                     continue
 
-                if self.debug and hasattr(self, 'engine'):
-                    if self.engine.phase == self.engine.PHASE_RIVER:
-                        input('$ check hands if lucky')
-                        for s, d in self.engine.data.items():
-                            if 'in' in d['status']:
-                                self.site.parse_pocket_region(self.img, s)
-
             # always break (only continue when tlc & btn found)
             break
 
@@ -202,6 +195,11 @@ class Scraper:
                 elif self.engine.phase in [self.engine.PHASE_GG, self.engine.PHASE_SHOWDOWN]:
                     logger.info('Game comleted but waiting for button move')
                     time.sleep(0.3)
+                    if self.debug:
+                        input('$ check hands if lucky:')
+                        for s, d in self.engine.data.items():
+                            if 'in' in d['status']:
+                                self.site.parse_pocket_region(self.img, s)
                 else:
                     logger.debug('button not moved, just continue loop')
                     self.wait_player_action()

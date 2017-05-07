@@ -149,8 +149,8 @@
        - [145, 152]   # validate
        - [243, 151]   # validate
       9:
-       - [458, 58]    # validate
-       - [458, 58]    # validate
+       - [456, 6]
+       - [556, 6]
   pocket_regions:
     shape: [250, 150]
     th_tpl: 0.99
