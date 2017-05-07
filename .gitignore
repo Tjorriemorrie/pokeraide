@@ -75,3 +75,4 @@ src/node_modules/
 
 **/chips/
 **/chips_fake/
+**/sites/*/*.png
