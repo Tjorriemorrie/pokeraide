@@ -265,6 +265,11 @@ class Scraper:
             logger.debug('Current thinking player is {}'.format(current_s))
         except ThinkingPlayerError as e:
             logger.error(e)
+            if self.debug:
+                input('$ check hands if lucky:')
+                for s, d in self.engine.data.items():
+                    if 'in' in d['status']:
+                        self.site.parse_pocket_region(self.img, s)
         else:
 
             # if player is still thinking, then so can we
