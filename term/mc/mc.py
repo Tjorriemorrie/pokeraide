@@ -155,7 +155,7 @@ class MonteCarlo:
                     self.traversed_focus, self.traversed_ceiling))
                 self.traversed_focus += 1
         duration = time.time() - time_start
-        self.show_best_action()
+        # self.show_best_action()
         logger.warn('Monte Carlo ended after taking {}s'.format(int(duration)))
 
     def run_item(self, path):

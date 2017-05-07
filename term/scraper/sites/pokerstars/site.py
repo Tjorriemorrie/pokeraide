@@ -256,7 +256,9 @@ class PokerStars(BaseSite):
 
         contribs = {}
         locs = self.match_template(img, template, threshold, True)
-        logger.debug(json.dumps(locs, indent=3, default=str))
+        # DONE
+        # if self.debug:
+        #     logger.debug(json.dumps(locs, indent=3, default=str))
         for loc_dollar in locs:
             found = False
             for s, seat_loc in coords['seats'].items():
@@ -354,11 +356,10 @@ class PokerStars(BaseSite):
 
     def parse_pocket_back(self, img, s):
         """Parses backside of pocket for player"""
-        logger.info('Player {} has back pocket?'.format(s))
         coords = self.coords['pocket_back']
-        logger.debug('coords = {}'.format(coords))
-
         pt = coords['seats'][s]
+        logger.info('parsing back of player {} with {} [card shape = {}]'.format(s, pt, coords['shape']))
+
         loc = (
             pt[0],
             pt[1],
@@ -368,10 +369,12 @@ class PokerStars(BaseSite):
         img_back = img.crop(loc)
         if self.debug:
             img_back.save(os.path.join(self.PWD, 'pocket_back_{}.png'.format(s)))
+
         template = self.img['pocket_back']
         mse = self.mse_from_counts(np.array(template), np.array(img_back))
         if mse > coords['th_mse']:
             logger.info('Player {} has no pocket back'.format(s))
+            # DONE
             # if self.debug:
             #     locs = self.match_template(img, self.img['pocket_back'], 0.99, True)
             #     logger.debug('Found the following pocket backs matching template: {}'.format(
@@ -385,7 +388,7 @@ class PokerStars(BaseSite):
         card_shape = self.coords['card_shape']
         pocket = []
         coords = self.coords['pocket_cards']
-        logger.info('parsing pocket of player {} with {} [card shape = {}]'.format(s, coords, card_shape))
+        logger.debug('parsing pocket of player {} with {} [card shape = {}]'.format(s, coords, card_shape))
         for _, pt_s in enumerate(coords['seats'][s]):
             i = _ + 1
             loc_pt = (
@@ -401,10 +404,11 @@ class PokerStars(BaseSite):
             loc_card = self.match_template(self.img['cards_map'], img_pocket, coords['th_tpl'])
             logger.debug('player {} pocket matched loc: {}'.format(s, loc_card))
             if not loc_card:
-                logger.info('Player {} pocket card {} not identified on cards_map image'.format(s, i))
-                if self.debug:
-                    if input('$ player {} no facing cards: debug? '.format(s)) == 'y':
-                        self.parse_pocket_region(img, s)
+                logger.debug('Player {} pocket card {} not identified on cards_map image'.format(s, i))
+                # DONE
+                # if self.debug:
+                #     if input('$ player {} no facing cards: debug? '.format(s)) == 'y':
+                #         self.parse_pocket_region(img, s)
                 break
             card_name = self.cards_map['{},{}'.format(*loc_card)]
             logger.debug('Player {} card {} identified as {}'.format(s, i, card_name))
@@ -414,9 +418,9 @@ class PokerStars(BaseSite):
 
         if len(pocket) == 1:
             logger.error('Incorrect number of cards identified: {}'.format(len(pocket)))
-            pocket.append('__')
+            return []
 
-        logger.debug('Player {} pocket = {}'.format(s, pocket))
+        logger.info('Player {} pocket = {}'.format(s, pocket))
         return pocket
 
     def parse_pocket_region(self, img, s):

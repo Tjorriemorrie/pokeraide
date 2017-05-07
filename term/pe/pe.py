@@ -49,13 +49,13 @@ class PE:
             if 'in' in d['status']:
                 seats.append(s)
                 pocket = engine.data[s]['hand']
-                # logger.debug('player {} has pocket {}'.format(s, pocket))ª
-                if pocket != ['__', '__']:
+                logger.debug('player {} has pocket {}'.format(s, pocket))
+                if pocket and pocket != ['__', '__']:
                     hand_range = [tuple(engine.data[s]['hand'])]
-                    # logger.debug('player {} added {} pocket cards'.format(s, hand_range))
+                    logger.debug('player {} added {} pocket cards'.format(s, hand_range))
                 else:
                     hand_range = engine.players[s]['hand_range']
-                    # logger.debug('player {} added {} hand ranges'.format(s, len(hand_range)))
+                    logger.debug('player {} added {} hand ranges'.format(s, len(hand_range)))
                 hand_ranges.append(hand_range)
 
         seats_len = len(seats)

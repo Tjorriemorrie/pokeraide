@@ -74,6 +74,9 @@ class Scraper:
         # board moved to help finish phase
         self.board_moved = False
 
+        # if tlc/btn cannot be found, drop existing game after 5 seconds
+        self.drop_game_start = None
+
     def load_files(self):
         """Replays through images saved during debug run"""
         self.files = []
@@ -106,8 +109,19 @@ class Scraper:
 
                 try:
                     self.img = self.site.parse_top_left_corner(img_full)
+                    if self.drop_game_start:
+                        self.drop_game_start = None
+                        logger.info('Continuing existing game')
                 except SiteException as e:
                     logger.error(e)
+                    if not self.waiting_for_new_game:
+                        if not self.drop_game_start:
+                            self.drop_game_start = time.time()
+                            logger.warn('Drop game beginning...')
+                        elif time.time() - self.drop_game_start > 5:
+                            self.waiting_for_new_game = True
+                            self.button_moved = False
+                            logger.error('Game state aborted!')
                     if self.debug:
                         input('$ really no tlc?')
                         img_full.show()
@@ -140,6 +154,13 @@ class Scraper:
                         input('$ what is this board error?')
                     continue
 
+                # DONE
+                # if self.debug:
+                #     input('$ check hands if lucky:')
+                #     for s, d in self.engine.data.items():
+                #         if 'in' in d['status']:
+                #             self.site.parse_pocket_region(self.img, s)
+
             # always break (only continue when tlc & btn found)
             break
 
@@ -164,7 +185,8 @@ class Scraper:
             logger.debug('The board changed with {}'.format(set(board) - set(self.engine.board)))
             self.engine.board = board
             self.board_moved = True
-            input('$ board really changed?')
+            if self.debug:
+                input('$ board really changed?')
 
         logger.debug('board: {}'.format(self.engine.board))
 
@@ -235,7 +257,6 @@ class Scraper:
         #   considered board phase...
         # check if phase from number of cards on board is what current player expected phase is
         if self.board_moved:
-            input('$ board phase started')
             # this works only if 'board_moved' (looking to catch up if card added to board)
             logger.debug('board moved: engine phase: {}'.format(self.engine.phase))
             logger.debug('board moved: board map: {}'.format(self.engine.BOARD_MAP[len(self.engine.board)]))
@@ -250,7 +271,6 @@ class Scraper:
                 logger.debug('board moved: board map: {}'.format(self.engine.BOARD_MAP[len(self.engine.board)]))
             self.board_moved = False
             self.check_names()
-            input('$ board phase done')
 
         # an allin would end here
         if self.engine.phase == self.engine.PHASE_SHOWDOWN:
@@ -265,11 +285,6 @@ class Scraper:
             logger.debug('Current thinking player is {}'.format(current_s))
         except ThinkingPlayerError as e:
             logger.error(e)
-            if self.debug:
-                input('$ check hands if lucky:')
-                for s, d in self.engine.data.items():
-                    if 'in' in d['status']:
-                        self.site.parse_pocket_region(self.img, s)
         else:
 
             # if player is still thinking, then so can we
@@ -369,7 +384,8 @@ class Scraper:
         action = self.engine.do(cmd)
         action_name = self.ACTIONS_MAP[action[0]]
         logger.info('Player {} did {} {}'.format(s, action_name, action))
-        input('$ check player action')
+        if self.debug:
+            input('$ check player action')
 
         # cut tree based on action
         # do not have to cut tree when button moved
@@ -465,6 +481,7 @@ class Scraper:
         contribs = self.site.parse_contribs(self.img)
         ante = self.check_ante(contribs)
         sb, bb = self.check_blinds(contribs)
+
         self.pre_start(balances, contribs, ante)
 
         logger.debug('creating engine...')
@@ -477,6 +494,8 @@ class Scraper:
 
         logger.debug('creating MC...')
         self.mc = MonteCarlo(engine=self.engine, hero=self.site.HERO)
+
+        self.post_start()
 
         logger.info('new game created!')
         self.waiting_for_new_game = False
@@ -552,7 +571,15 @@ class Scraper:
         logger.info('pre start done')
         if self.debug:
             input('$ check balances/contribs/ante')
-        
+
+    def post_start(self):
+        """Post start. Engine and MC has been created.
+        Set hero hand immediately for analysis of EV"""
+        hero = self.site.HERO
+        pocket = self.site.parse_pocket_cards(self.img, hero)
+        self.engine.data[hero]['hand'] = pocket
+        logger.info('Hero (p{}) hand set to {}'.format(hero, pocket))
+
     def finish_it(self):
         """Finish the game. Calculate the winner and winnings
          * set board
@@ -685,7 +712,8 @@ class Scraper:
         self.waiting_for_new_game = True
         ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs)
         logger.info('Game over! Player {} won!'.format(self.engine.winner))
-        input('$ check gg')
+        if self.debug:
+            input('$ check gg')
 
     def cards(self):
         """Generate cards for a site"""
