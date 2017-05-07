@@ -1,5 +1,5 @@
 from collections import Counter
-import functools
+from functools import lru_cache
 from itertools import product, chain
 import logging
 from math import ceil, floor
@@ -16,23 +16,11 @@ class PE:
     SAMPLE_SIZE = 0.10
 
     @classmethod
-    def req_equities(cls, board, pockets):
-        """Makes request to service for PE"""
-        logger.debug('requesting equities')
-        res = requests.post('http://127.0.0.1:5000/', json={
-            'pockets': pockets,
-            'board': board,
-        })
-        res.raise_for_status()
-        equities = res.json()
-        return equities
-
-    @classmethod
     def hand_strength(cls, hand):
         """Used for calculating the hand strengths for ranking pockets"""
         pockets = [list(hand), ['__', '__']]
         board = ['__'] * 5
-        equities = PE.req_equities(board, pockets)
+        equities = req_equities(board, pockets)
         hand_strength = equities['eval'][0]['ev'] / 1000
         logger.debug('pocket {} strength: {}'.format(hand, hand_strength))
         return hand_strength
@@ -92,7 +80,7 @@ class PE:
         pockets = [engine.data[s]['hand'] for s in seats]
         # logger.info('seats = {} and pockets = {} and board = {}'.format(seats, pockets, board))
 
-        eval_res = PE.req_equities(board, pockets)
+        eval_res = req_equities(board, pockets)
 
         equities = {}
         for s, e in zip(seats, eval_res['eval']):
@@ -110,6 +98,7 @@ class PE:
 
         calcs = 0
         logger.debug('calculating equities for {} players with {}'.format(seats_len, board))
+        logger.debug('calculating equities for {} hands'.format(len(hand_ranges)))
         equities_evals = {s: [] for s in seats}
         for hrp in product(*hand_ranges):
             # logger.debug('HRP = {} {}'.format(len(hrp), hrp))
@@ -121,7 +110,7 @@ class PE:
             calcs += 1
             hrps = list(chain.from_iterable(map(list, hrp)))
             # logger.debug('hrps {} and board {}'.format(hrps, board))
-            eval = cls.pokereval_2(*board, *hrps)
+            eval = pokereval_2(*board, *hrps)
             for s, e, p in zip(seats, eval['eval'], hrp):
                 # logger.debug('s={} e={} p={}'.format(s, e, p))
                 equities_evals[s].append(e['ev'] / 1000)
@@ -166,17 +155,29 @@ class PE:
 
         duration = time.time() - time_start
         # logger.info('calculated {}/s  [{} calcs in {}s]'.format(calcs // duration, calcs, duration))
-        # logger.info('cache info: {}'.format(cls.pokereval_2.cache_info()))
+        # logger.info('cache info: {}'.format(pokereval_2.cache_info()))
 
         # logger.info('final equities: {}'.format(equities))
         return equities
 
-    @classmethod
-    @functools.lru_cache(maxsize=1<<18)
-    def pokereval_2(cls, b1, b2, b3, b4, b5, c1, c2, c3, c4):
-        board = [b1, b2, b3, b5, b5]
-        hrp = [[c1, c2], [c3, c4]]
-        # logger.debug('reconstructed b= {} & c= {}'.format(board, hrp))
-        equities = PE.req_equities(board, hrp)
-        # logger.debug('{} => {}'.format(hrp, [e['ev'] for e in eval['eval']]))
-        return equities
+
+@lru_cache(maxsize=1 << 18)
+def pokereval_2(b1, b2, b3, b4, b5, c1, c2, c3, c4):
+    board = [b1, b2, b3, b5, b5]
+    hrp = [[c1, c2], [c3, c4]]
+    # logger.debug('reconstructed b= {} & c= {}'.format(board, hrp))
+    equities = req_equities(board, hrp)
+    # logger.debug('{} => {}'.format(hrp, [e['ev'] for e in eval['eval']]))
+    return equities
+
+
+def req_equities(board, pockets):
+    """Makes request to service for PE"""
+    logger.debug('requesting equities for board {} and pockets {}'.format(board, pockets))
+    res = requests.post('http://127.0.0.1:5000/', json={
+        'pockets': pockets,
+        'board': board,
+    })
+    res.raise_for_status()
+    equities = res.json()
+    return equities

@@ -51,6 +51,16 @@ def cards(site, seats):
 cli.add_command(cards)
 
 
+@click.command()
+@click.argument('site')
+@click.argument('seats', type=click.INT)
+def chips(site, seats):
+    from scraper.main import Scraper
+    scraper = Scraper(site, seats)
+    scraper.chips()
+cli.add_command(chips)
+
+
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)
     # for _ in ('boto', 'elasticsearch', 'urllib3', 'PIL', 'requests'):

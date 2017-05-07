@@ -50,7 +50,7 @@ class Engine:
 
     FILE = join(dirname(realpath(__file__)), 'engine')
 
-    def __init__(self, site_name, button, players, sb, bb, **kwargs):
+    def __init__(self, site_name, button, players, sb, bb, ante=0, *args, **kwargs):
         logger.info('Engine site_name: {}'.format(site_name))
         logger.info('Engine button: {}'.format(button))
         logger.info('Engine players: {}'.format(len(players)))
@@ -61,6 +61,7 @@ class Engine:
         self.players = players
         self.sb_amt = sb
         self.bb_amt = bb
+        self.ante = ante
         self.go_to_showdown = False
         self.mc = False
 
@@ -77,6 +78,8 @@ class Engine:
                 'turn': [],
                 'river': [],
                 'showdown': [],  # for error at stats
+                'is_SB': False,
+                'is_BB': False,
             } for s, p in players.items()}
         self.vs = sum([1 if d['status'] == 'in' else 0 for d in self.data.values()])
         self.rivals = self.vs
@@ -215,7 +218,7 @@ class Engine:
             # logger.debug('rotate: player now seat {}'.format(self.q[0][0]))
             d = self.data[self.q[0][0]]
             if d['status'] == 'in':
-                logger.info('next player is {} {}'.format(self.q[0][0], self.q[0][1]['name']))
+                logger.info('next player: {} name: {}'.format(self.q[0][0], self.q[0][1]['name']))
                 break
 
     def queue_display(self):
@@ -251,8 +254,12 @@ class Engine:
             if not phase_data.get('started'):
                 # logger.debug('starting preflop')
                 for s, p in self.players.items():
-                    # logger.debug(p)
                     self.data[s]['hand'] = ['__', '__'] if bool(p.get('status')) else ['  ', '  ']
+                    # subtract ante immediately (else scraper balance is wrong in preflop)
+                    if self.ante:
+                        self.pot += self.ante
+                        self.players[s]['balance'] -= self.ante
+                    logger.debug('Player {} ante {} for hand {}'.format(s, self.data[s]['contrib'], self.data[s]['hand']))
                 self.player_queue()
                 # for headsup the button posts SB
                 if self.vs == 2:
@@ -345,7 +352,7 @@ class Engine:
                 # preflop special only matters if nobody has raised
                 if self.phase == self.PHASE_PREFLOP and max(contribs) == self.bb_amt:
                     # BB only have to check (not call)
-                    if 'is_BB' in d:
+                    if d['is_BB']:
                         actions.append('check')
                     else:
                         actions.append('call')
@@ -386,7 +393,7 @@ class Engine:
 
         If an action indicates the end of a phase, then set that phase finished attr. Also
         put all the contribs to the pot (since bets needs to be matched).
-        Todo: move this to per pot contrib & matched
+        Moved this to per pot contrib & matched
 
         GG gets winner and gives that player the pot
 
@@ -404,7 +411,7 @@ class Engine:
             - player balance
 
         '''
-        # logger.info('Player {} phase {} DO {}'.format(self.q[0][0], self.phase, action))
+        logger.info('Player {} phase {} DO {}'.format(self.q[0][0], self.phase, action))
 
         if not action[0]:
             logger.warn('no action received')
@@ -508,21 +515,38 @@ class Engine:
 
         if action[0] in ['b', 'r']:
             # player raising on BB gives error (since it is the same)
-            if not int(action[1]) - contrib_short and 'is_BB' not in d and self.phase == self.PHASE_PREFLOP:
+            if not int(action[1]) - contrib_short and not d['is_BB'] and self.phase == self.PHASE_PREFLOP:
                 logger.warn('changed bet/raise that is equal to contrib_short instead to a call')
-                action[0] = 'c'
+                action = ['c']
 
-            # cannot bet/raise less than required
-            elif int(action[1]) < max_contrib:
-                raise ValueError('A raise {} cannot be less than the max_contrib {}'.format(action[1], max_contrib))
+            # normal player just called with short contrib
+            elif int(action[1]) == contrib_short:
+                logger.debug('{} changed to call as {} is same as contrib short'.format(action[0], contrib_short))
+                action = ['c']
+
+            # if amount is zero, then check
+            elif not int(action[1]):
+                logger.debug('amount is {}, considering a check'.format(action[1]))
+                action = ['k']
+
+            # amount cannot be negative
+            elif int(action[1]) < 0:
+                logger.warn('amount is negative {}, cannot be'.format(action[1]))
+                action = ['k']
 
             # change to allin if it is all the money
             elif int(action[1]) >= p['balance'] - d['contrib']:
                 logger.warn('changed b/r to allin as it is everything player has')
-                action[0] = 'a'
+                action = ['a']
 
             # handle the bet/raise
             else:
+                # cannot bet/raise less than required
+                # but what about 3/4 betting or actually just calling
+                # todo fix this as the cmd and contrib should equal maxcontrib
+                if int(action[1]) < max_contrib:
+                    logger.warn('A raise {} cannot be less than the max_contrib {}'.format(action[1], max_contrib))
+
                 # cannot bet if you are required to put in (e.g. somebody else made bet)
                 actions_player = []
                 for action_player in self.data.values():
@@ -582,7 +606,15 @@ class Engine:
         if self.is_round_finished():
             self.gather_the_money()
             phase_data['finished'] = True
-        # (self.phase == self.PHASE_PREFLOP and s == 7) and input('check round finished')
+            logger.debug('phase {} data: {}'.format(self.phase, phase_data))
+            # if not self.mc:
+            #     logger.debug('balances = {}'.format(json.dumps(
+            #         {s: p['balance'] for s, p in self.players.items()
+            #          if 'in' in self.data[s]['status']},
+            #         indent=4, default=str
+            #     )))
+            #     if self.debug:
+            #         input('check finished round')
 
         # adjust strength with current stats
         self.adjust_strength(s, d, action[0])
@@ -612,7 +644,7 @@ class Engine:
             self.pot += d['contrib']
             self.players[s]['balance'] -= d['contrib']
             d['matched'] += d['contrib']
-            # logger.info('player {} matched: {} (added {})'.format(s, d['matched'], d['contrib']))
+            logger.debug('player {} matched: {} (added {})'.format(s, d['matched'], d['contrib']))
             d['contrib'] = 0
 
     def is_round_finished(self):
@@ -625,7 +657,6 @@ class Engine:
         This is checked only in DO and after ROTATION
         """
         logger.info('is round finished?')
-        is_bb_finished = True
         in_contribs = Counter()
         allin_contribs = Counter()
         for s, d in self.data.items():
@@ -634,8 +665,9 @@ class Engine:
                 if not d[self.phase]:
                     logger.debug('player {} has not acted yet'.format(s))
                     return False
-                elif self.phase == self.PHASE_PREFLOP and 'is_BB' in d and len(d[self.phase]) < 2:
-                    is_bb_finished = False
+                elif self.phase == self.PHASE_PREFLOP and d['is_BB'] and len(d[self.phase]) < 2:
+                    logger.debug('BB still has to act')
+                    return False
                 in_contribs.update([d['contrib']])
             elif d['status'] == 'allin':
                 allin_contribs.update([d['contrib']])
@@ -644,25 +676,24 @@ class Engine:
             logger.debug('bets are not equal')
             return False
 
-        elif list(in_contribs) and len(list(allin_contribs)) and min(list(in_contribs)) < max(list(allin_contribs)):
+        elif list(in_contribs) and len(list(allin_contribs)) \
+                and min(list(in_contribs)) < max(list(allin_contribs)):
             logger.debug('still have to call allin')
-            return False
-
-        elif not is_bb_finished:
-            logger.debug('BB still has to act')
             return False
 
         """Helper to quickly check if all players are allin
         or if one player is allin and another called
 
         If one goes allin, and TWO players call, then they can still bet again.
-          Check the todo
+        Otherwise this sets a 'go_to_showdown' flag to process phases
         """
         # Todo need to handle allin players creating sidepot
         statuses = Counter([d['status'] for d in self.data.values()])
         if statuses['allin'] and statuses['in'] <= 1:
             self.go_to_showdown = True
             logger.debug('go_to_showdown {} players are allin'.format(statuses['allin']))
+            # if not self.mc:
+            #     input('$ check go to showdown')
 
         logger.info('round is finished')
         return True
@@ -757,3 +788,6 @@ class Engine:
         else:
             return 0
 
+
+class EngineError(ValueError):
+    """Error during engine DO method."""

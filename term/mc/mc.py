@@ -52,8 +52,9 @@ class MonteCarlo:
 
     def init_tree(self):
         """create the tree. Add a root; available action will add the first level of children"""
+        self.traversed_ceiling = 1
         self.tree = Tree()
-        root = self.tree.create_node('root', identifier='0_root', data={'traversed': 0, 'ev': 0})
+        root = self.tree.create_node('root', identifier='000_root', data={'traversed': 0, 'ev': 0})
         # logger.info('tree:\n{}'.format(self.tree.show()))
         self.convergence = {
             'deq': deque(maxlen=self.convergence_size),
@@ -104,7 +105,7 @@ class MonteCarlo:
             self.run()
             self.timeout += 0.1
 
-    def run(self):
+    def run(self, duration):
         """Run simulations
         For x:
          - clone engine
@@ -118,10 +119,14 @@ class MonteCarlo:
          Levelling:
             extremely huge iterations when many players. So
             do the most probably actions only till all done.
+
+        Handling close action approximations:
         """
         logger.info('Monte Carlo started')
+        self.traversed_focus = 0
+        self.timeout = duration / 10
         time_start = time.time()
-        while not self.is_complete and time.time() - time_start < self.timeout:
+        while self.traversed_focus < self.traversed_ceiling and time.time() - time_start < self.timeout:
             self.is_complete = True
             leaves = self.tree.paths_to_leaves()
             logger.debug('leaves from tree: {}'.format(len(leaves)))
@@ -129,10 +134,12 @@ class MonteCarlo:
             # logger.debug('{} leaves are now sorted by formula'.format(len(leaves)))
             # logger.error(json.dumps(leaves, indent=4, default=str))
             # input('>>')
-            leaves.sort(key=lambda lp: lp[-1][0])
+            leaves.sort(key=lambda lp: lp[-1][:3], reverse=True)
             logger.debug('{} leaves are now sorted by rank'.format(len(leaves)))
+            # logger.debug('{}'.format(json.dumps(leaves[:3], indent=4, default=str)))
             leaves.sort(key=len)
             logger.debug('{} leaves are now sorted by length'.format(len(leaves)))
+            # logger.debug('{}'.format(json.dumps(leaves[:3], indent=4, default=str)))
             for leaf in leaves:
                 self.run_item(leaf)
                 # self.show_best_action()
@@ -143,6 +150,10 @@ class MonteCarlo:
                     logger.info('time is up for processing!')
                     self.is_complete = False
                     break
+            if self.is_complete:
+                logger.info('Tree level {} fully traversed, levelling up to ceiling {}'.format(
+                    self.traversed_focus, self.traversed_ceiling))
+                self.traversed_focus += 1
         duration = time.time() - time_start
         self.show_best_action()
         logger.warn('Monte Carlo ended after taking {}s'.format(int(duration)))
@@ -174,7 +185,9 @@ class MonteCarlo:
         action = None
         amount = None
         for nid in self.tree[self.tree.root].fpointer:
-            dat = self.tree[nid].data
+            child = self.tree[nid]
+            logger.debug('{} {}'.format(child.tag, child.data))
+            dat = child.data
             sum_traversed += dat['traversed']
             logger.error('{} @{} => {}'.format(dat['action'], dat['traversed'], round(dat['ev'], 4)))
 
@@ -228,8 +241,8 @@ class MonteCarlo:
         leaf_node = self.tree[path[-1]]
         logger.debug('checking if last node has been processed:')
         logger.debug('last node leaf {} has node data {}'.format(leaf_node.tag, leaf_node.data))
-        if leaf_node.data['traversed']:
-            logger.info('This leaf node ({}) already traversed, skipping it'.format(leaf_node.tag))
+        if leaf_node.data['traversed'] > self.traversed_focus:
+            logger.info('This leaf node ({}) above focus level {}'.format(leaf_node.tag, self.traversed_focus))
             return
 
         for nid in path[1:]:
@@ -273,7 +286,7 @@ class MonteCarlo:
             winnings, losses = self.net(e)
             result = {
                 'ev': losses,
-                'traversed': 1,
+                'traversed': self.traversed_focus + 1,
             }
             logger.info('hero has folded this node given: {}'.format(result))
             n.data.update(result)
@@ -301,15 +314,15 @@ class MonteCarlo:
                 equities = PE.showdown_equities(e)
                 logger.debug('pokereval equities: {}'.format(equities))
                 winnings, losses = self.net(e)
-                ev_pos = winnings * equities[self.hero]
-                logger.debug('ev_pos = {} from winnings {} * eq {}'.format(ev_pos, winnings, equities[self.hero]))
-                ev_neg = losses * (1 - equities[self.hero])
-                logger.debug('ev_neg = {} from losses {} * -eq {}'.format(ev_neg, losses, (1 - equities[self.hero])))
+                ev_pos = winnings * equities.get(self.hero, 0)
+                logger.debug('ev_pos = {} from winnings {} * eq {}'.format(ev_pos, winnings, equities.get(self.hero, 0)))
+                ev_neg = losses * (1 - equities.get(self.hero, 0))
+                logger.debug('ev_neg = {} from losses {} * -eq {}'.format(ev_neg, losses, (1 - equities.get(self.hero, 0))))
                 ev = ev_pos + ev_neg
                 logger.info('Net EV: {} from {} + {}'.format(ev, ev_pos, ev_neg))
             result = {
                 'ev': ev,
-                'traversed': 1,
+                'traversed': self.traversed_focus + 1,
             }
             logger.info('{} leaf has result {}'.format(n.tag, result))
             n.data.update(result)
@@ -330,7 +343,7 @@ class MonteCarlo:
             winnings, losses = self.net(e)
             result = {
                 'ev': losses,
-                'traversed': 1,
+                'traversed': self.traversed_focus + 1,
             }
             logger.info('hero has folded the child node selected: {}'.format(result))
             a_node.data.update(result)
@@ -362,6 +375,9 @@ class MonteCarlo:
         do not change it: the ev is the ev
 
         Minimax applied, hero pick best and foe picks min after p
+
+        Traversed will stay the traversed_focus level for leaves, but for parent nodes
+        the traversed will be the number of leaves reached from that node.
         """
         # fast forwarding will send here, just ignore node if leaf
         if node.is_leaf():
@@ -394,7 +410,7 @@ class MonteCarlo:
             # get max for hero
             if is_hero:
                 equities = PE.showdown_equities(self.engine)
-                n_ev = max(n_ev, dat['ev'] * equities[self.hero])
+                n_ev = max(n_ev, dat['ev'] * equities.get(self.hero, 0))
                 # n_ev = max(n_ev, dat['ev'])
                 logger.debug('hero ev of {}'.format(n_ev))
 
@@ -406,7 +422,7 @@ class MonteCarlo:
                 n_ev += dat['ev'] * dat['stats']
                 logger.debug('foe node ev = {} from {} * {}'.format(n_ev, dat['ev'], dat['stats']))
 
-            n_traversed += dat['traversed']
+            n_traversed += 1
 
         node.data.update({
             'ev': n_ev,
@@ -443,17 +459,18 @@ class MonteCarlo:
 
     def most_probable_action(self, parent):
         """All nodes will be processed once at least but it will never happen. Just return
-        the most probable node for most accurate play."""
+        the most probable node for most accurate play. Using stats fields on data
+        There should not be any untraversed nodes. So first get untraversed, then short
+        and pop first one"""
         logger.info('getting most probable action after {}'.format(parent.tag))
-        for _ in range(101):
-            for nid in parent.fpointer:
-                if not nid.startswith(str(_)):
-                    continue
-                child = self.tree[nid]
-                if not child.data['traversed']:
-                    logger.debug('{} is untraversed, returning that node for actioning'.format(child.tag))
-                    return child
-        raise Exception('All nodes processed, how is that possible, wtf?!')
+        children = self.tree.children(parent.identifier)
+        children = [c for c in children if not c.data['traversed']]
+        if not children:
+            raise MonteCarloError('Cannot choose most probable action when all nodes are traversed')
+        children.sort(key=lambda c: c.data['stats'], reverse=True)
+        child = children[0]
+        logger.debug('{} is untraversed, returning that node for actioning'.format(child.tag))
+        return child
 
     def add_actions(self, e, parent):
         """Add actions available to this node
@@ -541,12 +558,16 @@ class MonteCarlo:
                 # logger.debug('added minimum bet of {}'.format(btps_and_amts[-1]))
 
                 # add half pot bet
-                btps_and_amts.append(('half', total_pot * 0.50))
+                btps_and_amts.append(('half_pot', total_pot * 0.50))
                 logger.debug('added half pot bet of {}'.format(btps_and_amts[-1]))
 
                 # add pot bet
-                btps_and_amts.append(('pot', total_pot * 1.00))
+                btps_and_amts.append(('full_pot', total_pot * 1.00))
                 logger.debug('added pot bet of {}'.format(btps_and_amts[-1]))
+
+                # add double pot bet
+                btps_and_amts.append(('double_pot', total_pot * 2.00))
+                logger.debug('added double pot bet of {}'.format(btps_and_amts[-1]))
 
                 # logger.debug('stats for btp calcs is {}'.format(stats['btps'].values()))
                 # todo skipping bet to percentiles
@@ -620,7 +641,7 @@ class MonteCarlo:
                 'seat': s,
                 'name': p['name'],
                 'traversed': 0,
-                'ev': None,
+                'ev': 0,
                 'amount': balance_left,
             }
             action_nodes.append(node_data)
@@ -629,18 +650,18 @@ class MonteCarlo:
         # scale the stats (it is currently term counts aka histogram) and it is required to be
         # a probability distribution (p~1)
         total_stats = sum(an['stats'] for an in action_nodes if an['action'] != 'fold')
+        # the distribution will be fixed within the non-fold equities
         non_fold_equity = 1 - stats['actions'].get('fold', 0)
         # logger.debug('total stats equity = {} and non_fold_equity = {}'.format(total_stats, non_fold_equity))
-        # logger.info('before sorting {}'.format(action_nodes))
-        sorted(action_nodes, key=itemgetter('stats'))
-        # logger.info('after sorting {}'.format(action_nodes))
         for action_node in action_nodes:
+            identifier = '{:03d}_{}'.format(int(action_node['stats'] * 100), uuid.uuid4())
             node_tag = '{}_{}_{}'.format(action_node['action'], s, e.phase)
-            identifier = '{}_{}'.format(int(action_node['stats'] * 100), uuid.uuid4())
             if action_node['action'] != 'fold':
                 action_node['stats'] = max(0.01, action_node['stats'] / total_stats * non_fold_equity)
-            self.tree.create_node(tag=node_tag, identifier=identifier, parent=parent.identifier, data=action_node)
+            self.tree.create_node(identifier=identifier, tag=node_tag, parent=parent.identifier, data=action_node)
             logger.debug('new {} for {} with data {}'.format(node_tag, s, action_node))
         logger.info('{} node actions added'.format(len(action_nodes)))
-        # (parent.tag == 'call_7_preflop') and input('check child nodes for 5!')
 
+
+class MonteCarloError(Exception):
+    """Exception raised by MC"""

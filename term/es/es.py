@@ -357,3 +357,34 @@ class ES:
             # logger.debug('bisected {} from {} at {}%'.format(v, k, r))
         # logger.debug('dist_stats {}'.format(r))
         return r
+
+    @classmethod
+    def save_game(self, players, data, site_name, vs):
+        logger.info('saving game...')
+        names_and_balances = ''.join(['{}{}'.format(p['name'], p['balance']) for p in players.values()])
+        logger.debug('names and balances: {}'.format(names_and_balances))
+        for s, d in data.items():
+            doc = {}
+            id = names_and_balances
+            for phase in ['preflop', 'flop', 'turn', 'river']:
+                logger.debug('data for {}: {}'.format(phase, d[phase]))
+                for i, action_info in enumerate(d[phase]):
+                    id += action_info['action']
+                    doc['{}_{}'.format(phase, i + 1)] = action_info['action']
+                    doc['{}_{}_rvl'.format(phase, i + 1)] = action_info['rvl']
+                    if i == 0:
+                        doc['{}_aggro'.format(phase)] = action_info['aggro']
+                    if 'bet_to_pot' in action_info:
+                        doc['{}_{}_btp'.format(phase, i + 1)] = action_info['bet_to_pot']
+                    if action_info.get('pot_odds'):
+                        doc['{}_{}_po'.format(phase, i + 1)] = action_info['pot_odds']
+            if doc:
+                doc.update({
+                    '_id': id,
+                    'player': players[s]['name'],
+                    'site': site_name,
+                    'vs': vs,
+                    'created_at': datetime.datetime.utcnow(),
+                })
+                logger.info('saving doc: {}'.format(json.dumps(doc, indent=3, default=str)))
+                GameAction(**doc).save()
