@@ -37,14 +37,25 @@ LOGGING_CONFIG = {
             'maxBytes': 2**20,
         },
         'file_vendor': {
-            'level': 'INFO',
+            'level': 'DEBUG',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'default',
             'filename': 'log/vendor.log',
             'maxBytes': 2**20,
         },
+        'file_scraper': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'default',
+            'filename': 'log/scraper.log',
+            'maxBytes': 2**20,
+        },
     },
     'loggers': {
+        'scraper': {
+            'handlers': ['file_scraper', 'errors'],
+            'propagate': False,
+        },
         'mc': {
             'handlers': ['file_back', 'errors'],
             'propagate': False,
@@ -80,7 +91,7 @@ LOGGING_CONFIG = {
     },
     'root': {
         'level': 'DEBUG',
-        'handlers': ['file_main', 'console'],
+        'handlers': ['file_scraper', 'file_main', 'console'],
         'loggers': ['mc']
     },
 }

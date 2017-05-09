@@ -66,6 +66,7 @@ class PokerStars(BaseSite):
     PATH_CHIPS = os.path.join(PWD, 'chips')
     FILE_COORDS = os.path.join(PWD, 'coords.yml')
     FILE_CARDS_MAP = os.path.join(PWD, 'cards_map.yml')
+    HOLE_CARDS = ['__', '__']
 
     def __init__(self, *args, **kwargs):
         """TLC box is crop box coords"""
@@ -231,7 +232,10 @@ class PokerStars(BaseSite):
                     logger.debug('Player {} balance = {}'.format(s, balance))
                     break
             if not found and not filter_seat:
-                raise BalancesError('loc {} not found for any player'.format(loc_dollar))
+                # raise BalancesError('loc {} not found for any player'.format(loc_dollar))
+                # apparently $ can be in players' names. fml
+                logger.warn('Balance loc {} not found for any player'.format(loc_dollar))
+                continue
             if filter_seat and balances:
                 logger.debug('found balance for player seeked')
                 break

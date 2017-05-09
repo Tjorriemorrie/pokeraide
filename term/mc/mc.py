@@ -124,7 +124,6 @@ class MonteCarlo:
         """
         logger.info('Monte Carlo started')
         self.traversed_focus = 0
-        self.timeout = duration / 10
         time_start = time.time()
         while self.traversed_focus < self.traversed_ceiling and time.time() - time_start < self.timeout:
             self.is_complete = True

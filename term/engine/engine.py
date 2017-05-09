@@ -70,7 +70,7 @@ class Engine:
         else:
             self.data = {s: {
                 'status': 'in' if p.get('status') else 'out',
-                'hand': [],
+                'hand': ['__', '__'] if p.get('status') else ['  ', '  '],
                 'contrib': 0,
                 'matched': 0,
                 'preflop': [],
@@ -127,52 +127,6 @@ class Engine:
         for k, v in self.__dict__.items():
             setattr(result, k, deepcopy(v, memo))
         return result
-
-    def __repr__(self):
-        logger.debug('getting engine repr...')
-        r = '{}:\n'.format(self.phase)
-
-        r += 'Pot: {}\n'.format(self.pot)
-
-        if self.board:
-            r += 'Board: {}\n'.format(' '.join(self.board))
-
-        # self.pe.equities(self.data, self.board)
-
-        pta = self.q[0][0] if self.q else 0
-        equities = PE.showdown_equities(self)
-        logger.debug('got equities for repr')
-
-        for s, p in self.players.items():
-            d = self.data[s]
-
-            # add player info
-            pr = '{:>10.10} '.format(p.get('name', ''))
-            pr += '{: 6d} '.format(p.get('balance', 0) - d.get('contrib', 0))
-
-            status = '<--' if s == pta and self.phase != self.PHASE_SHOWDOWN else '   '
-            pr += '{:>7} '.format(d.get('matched', 0) + d.get('contrib', 0) or '')
-            pr += '{} '.format(' '.join(d['hand']))
-            pr += '{:>3} '.format(s)
-            pr += '{} '.format('D' if self.button == s else ' ')
-            pr += '{} '.format(status)
-            pr += '{:3} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d['preflop']))
-            pr += '{:3} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d['flop']))
-            pr += '{:3} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d['turn']))
-            pr += '{:3} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d['river']))
-            pr += '{:>6} '.format(d['contrib'] or '')
-                # pr += '{:10} '.format('*' * d['equity'])
-            r += '{}\n'.format(pr)
-
-            # add player stats
-            if self.phase != self.PHASE_SHOWDOWN and 'in' in d['status']:
-                d['stats'] = ES.player_stats(self, s)
-                dist_stats = ES.dist_player_stats(d['stats']['actions'], d['strength'])
-                r += '{:>9}%'.format(int(equities[s] * 100))
-                r += '{:>21}\n'.format(dist_stats)
-            r += '\n'
-
-        return r
 
     def player_queue(self):
         """

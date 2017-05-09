@@ -50,7 +50,7 @@ class PE:
                 seats.append(s)
                 pocket = engine.data[s]['hand']
                 logger.debug('player {} has pocket {}'.format(s, pocket))
-                if pocket and pocket != ['__', '__']:
+                if pocket != ['__', '__']:
                     hand_range = [tuple(engine.data[s]['hand'])]
                     logger.debug('player {} added {} pocket cards'.format(s, hand_range))
                 else:

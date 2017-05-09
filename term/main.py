@@ -1,4 +1,5 @@
 import click
+import cProfile
 import logging.config
 
 from loggingconfig import LOGGING_CONFIG
@@ -29,15 +30,25 @@ cli.add_command(table)
 
 
 @click.command()
+@click.option('--profile', is_flag=True)
 @click.option('--observe', is_flag=True)
 @click.option('--replay', is_flag=True)
 @click.argument('site')
 @click.argument('seats', type=click.INT)
 @click.pass_context
-def scrape(ctx, site, seats, replay, observe):
+def scrape(ctx, site, seats, replay, observe, profile):
+    debug = ctx.obj['debug']
+    # change logging based on debug
+    if not debug:
+        logger = logging.getLogger()
+        for hdlr in logger.handlers:
+            hdlr.setLevel(logging.INFO)
     from scraper.main import Scraper
     scraper = Scraper(site, seats, debug=ctx.obj['debug'], replay=replay, observe=observe)
-    scraper.run()
+    if profile:
+        cProfile.runctx('scraper.run()', globals(), locals(), 'stats.prof')
+    else:
+        scraper.run()
 cli.add_command(scrape)
 
 
@@ -63,9 +74,4 @@ cli.add_command(chips)
 
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)
-    # for _ in ('boto', 'elasticsearch', 'urllib3', 'PIL', 'requests'):
-    #     logging.getLogger(_).setLevel(logging.CRITICAL)
-    # for key in logging.Logger.manager.loggerDict:
-    #     print(key)
-
     cli(obj={})

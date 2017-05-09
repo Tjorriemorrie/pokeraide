@@ -16,12 +16,13 @@ from scraper.sites.base import SiteException, NoDealerButtonError, PocketError, 
 from scraper.sites.pokerstars.site import PokerStars
 from scraper.sites.partypoker.site import PartyPoker
 from scraper.sites.zynga.site import Zynga
+from view import View
 
 
 logger = logging.getLogger(__name__)
 
 
-class Scraper:
+class Scraper(View):
     """Runs a scraper for a site. Will use the site to do the scraping, and with the data
     calculate what action needs to be taken and pass that into the engine and MC"""
 
@@ -94,7 +95,8 @@ class Scraper:
         logger.info('taking screen shot')
         while True:
             if not self.replay:
-                img = ImageGrab.grab()
+                # 3840 x 2400 mac retina
+                img = ImageGrab.grab((1920, 600, 3840, 2400))
                 if self.debug:
                     img_file = os.path.join(self.PATH_DEBUG, '{}.png'.format(datetime.datetime.utcnow()))
                     img.save(img_file)
@@ -113,7 +115,7 @@ class Scraper:
                         self.drop_game_start = None
                         logger.info('Continuing existing game')
                 except SiteException as e:
-                    logger.error(e)
+                    logger.info(e)
                     if not self.waiting_for_new_game:
                         if not self.drop_game_start:
                             self.drop_game_start = time.time()
@@ -214,6 +216,7 @@ class Scraper:
                 if self.button_moved:
                     logger.debug('button moved! we need to finish up what engine is')
                     self.finish_it()
+                    break
                 elif self.engine.phase in [self.engine.PHASE_GG, self.engine.PHASE_SHOWDOWN]:
                     logger.info('Game comleted but waiting for button move')
                     time.sleep(0.3)
@@ -231,6 +234,8 @@ class Scraper:
         """Runs MC analysis till timeout. This catches error where the amounts
         have varied too much from the current board by making the closes action"""
         logger.info('Running MC analysis')
+        if self.debug:
+            timeout /= 10
         try:
             self.mc.run(timeout)
         except EngineError as e:
@@ -239,6 +244,7 @@ class Scraper:
                 input('$ MC tree state bad')
             self.mc.init_tree()
             self.mc.run(timeout)
+        self.print()
 
     def wait_player_action(self):
         """Think a little. Always think at least 1 second after every player
@@ -284,13 +290,13 @@ class Scraper:
             current_s = self.site.parse_thinking_player(self.img)
             logger.debug('Current thinking player is {}'.format(current_s))
         except ThinkingPlayerError as e:
-            logger.error(e)
+            logger.info(e)
         else:
 
             # if player is still thinking, then so can we
             if current_s == self.engine.q[0][0]:
                 logger.debug('player to act {} is still thinking, so can we...'.format(current_s))
-                self.run_mc(2)
+                self.run_mc(3)
 
             # player (in engine) to act is not the one thinking on screen
             # whilst it is not the expected player to act use the same current img to catch up
@@ -319,6 +325,7 @@ class Scraper:
         s = self.engine.q[0][0]
         phase = self.engine.phase
         logger.info('check player {} action'.format(s))
+        logger.info('expecting one of {} during {}'.format(self.expected, phase))
 
         if 'fold' not in self.expected:
             logger.warn('End of game should not be here: {}'.format(self.expected))
@@ -427,21 +434,21 @@ class Scraper:
 
     def check_player_pocket(self, s):
         """Check if player has back side of pocket, otherwise check what his cards are"""
+
         # check for back side
         if self.site.parse_pocket_back(self.img, s):
-            logger.info('Player {} has pocket back'.format(s))
-            pocket = ['__', '__']
+            logger.info('Player {} has hole cards'.format(s))
+            return self.site.HOLE_CARDS
+
         # check if showing cards
-        else:
-            pocket = self.site.parse_pocket_cards(self.img, s)
-            # player is showing cards
-            if pocket:
-                self.engine.data[s]['hand'] = pocket
-            # folded
-            else:
-                pocket = []
-        logger.info('Player {} has pocket {}'.format(s, pocket))
-        return pocket
+        pocket = self.site.parse_pocket_cards(self.img, s)
+        if pocket:
+            self.engine.data[s]['hand'] = pocket
+            logger.info('Player {} is showing {}'.format(s, pocket))
+            return pocket
+
+        logger.info('Player has no cards')
+        return None
 
     def check_player_balance(self, s):
         """Due to text appearing, double confirm empty or errors"""
@@ -477,7 +484,7 @@ class Scraper:
             time.sleep(0.3)
             return
 
-        self.check_names()
+        # self.check_names()
         contribs = self.site.parse_contribs(self.img)
         ante = self.check_ante(contribs)
         sb, bb = self.check_blinds(contribs)
@@ -577,8 +584,9 @@ class Scraper:
         Set hero hand immediately for analysis of EV"""
         hero = self.site.HERO
         pocket = self.site.parse_pocket_cards(self.img, hero)
-        self.engine.data[hero]['hand'] = pocket
-        logger.info('Hero (p{}) hand set to {}'.format(hero, pocket))
+        if pocket:
+            self.engine.data[hero]['hand'] = pocket
+            logger.info('Hero (p{}) hand set to {}'.format(hero, pocket))
 
     def finish_it(self):
         """Finish the game. Calculate the winner and winnings
