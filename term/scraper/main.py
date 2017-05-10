@@ -91,6 +91,7 @@ class Scraper(View):
     def take_screen(self):
         """Get screen image
         Takes screen shot or load file if replaying
+        Stats: 9.58%
         """
         logger.info('taking screen shot')
         while True:
@@ -234,16 +235,21 @@ class Scraper(View):
         """Runs MC analysis till timeout. This catches error where the amounts
         have varied too much from the current board by making the closes action"""
         logger.info('Running MC analysis')
+
         if self.debug:
-            timeout /= 10
-        try:
-            self.mc.run(timeout)
-        except EngineError as e:
-            logger.error(e)
-            if self.debug:
-                input('$ MC tree state bad')
-            self.mc.init_tree()
-            self.mc.run(timeout)
+            timeout = 0.1
+
+        if 'in' not in self.engine.data[self.site.HERO]['status']:
+            time.sleep(0.33)
+        else:
+            try:
+                self.mc.run(timeout)
+            except EngineError as e:
+                logger.error(e)
+                if self.debug:
+                    input('$ MC tree state bad')
+                self.mc.init_tree()
+                self.mc.run(timeout)
         self.print()
 
     def wait_player_action(self):
@@ -276,7 +282,9 @@ class Scraper(View):
                 logger.debug('board moved: engine phase: {}'.format(self.engine.phase))
                 logger.debug('board moved: board map: {}'.format(self.engine.BOARD_MAP[len(self.engine.board)]))
             self.board_moved = False
-            self.check_names()
+            # Stats: 3.11% -> 1.49%
+            if self.engine.phase == self.engine.PHASE_FLOP:
+                self.check_names()
 
         # an allin would end here
         if self.engine.phase == self.engine.PHASE_SHOWDOWN:

@@ -117,7 +117,11 @@ class ES:
         get action distribution.
 
         Where it falls short of 1k hands
-        get the rest from all players"""
+        get the rest from all players
+
+        Stats: 23 - vsfunction 22
+        11.23 removed docs
+        """
         p = engine.players[seat]
         d = engine.data[seat]
         # logger.info('Get player stats for {} {}'.format(seat, p['name']))
@@ -126,7 +130,7 @@ class ES:
         query = {
             'bool': {
                 'should': [
-                    {'match': {'player': {'query': p['name'], 'boost': 8}}},
+                    {'match': {'player': {'query': p['name'], 'boost': 3}}},
                     # {'match': {'vs': {'query': engine.vs, 'boost': 2}}},
                     {'match': {'site': {'query': engine.site_name, 'boost': 1}}},
                 ]
@@ -153,11 +157,11 @@ class ES:
             for i, action_info in enumerate(d[phase]):
                 if i <= 1:
                     function_score['function_score']['functions'].append(
-                        {'gauss': {'{}_{}_rvl'.format(phase, i+1): {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.6}}}
+                        {'gauss': {'{}_{}_rvl'.format(phase, i+1): {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.66}}}
                     )
-                phase_matching.append({'match': {'{}_{}'.format(phase, i+1): {'query': action_info['action'], 'boost': 3}}})
+                phase_matching.append({'match': {'{}_{}'.format(phase, i+1): {'query': action_info['action'], 'boost': 2}}})
                 if i == 0:
-                    phase_matching.append({'match': {'{}_aggro'.format(phase): {'query': action_info['aggro'], 'boost': 3}}})
+                    phase_matching.append({'match': {'{}_aggro'.format(phase): {'query': action_info['aggro'], 'boost': 2}}})
         # logger.debug('Added {} action filters'.format(len(phase_matching)))
         query['bool']['should'].extend(phase_matching)
 
@@ -237,38 +241,40 @@ class ES:
 
         sample = A('sampler', shard_size=docs_per_shard)
         terms = A('terms', field=agg_field)
-        pottie = A('percentiles', field='{}_btp'.format(agg_field), percents=[10, 30, 50, 70, 90])
-        sea.aggs.bucket('mesam', sample).metric('pottie', pottie).bucket('aksies', terms)
+        # pottie = A('percentiles', field='{}_btp'.format(agg_field), percents=[10, 30, 50, 70, 90])
+        # sea.aggs.bucket('mesam', sample).metric('pottie', pottie).bucket('aksies', terms)
+        sea.aggs.bucket('mesam', sample).bucket('aksies', terms)
 
         sea = sea[:0]
         res = sea.execute()
 
-        cls.analyze_stats(sea, seat)
+        # debug
+        # cls.analyze_stats(sea, seat, res)
 
         # required to scale now mostly for using fold equity
         total_docs = sum(pa['doc_count'] for pa in res.aggregations.mesam.aksies.buckets)
         phase_actions = {a['key']: a['doc_count'] / total_docs for a in res.aggregations.mesam.aksies.buckets}
         # logger.info('scaled aggs: {}'.format(phase_actions))
 
-        phase_btps = res.aggregations.mesam.pottie.values.to_dict()
+        # phase_btps = res.aggregations.mesam.pottie.values.to_dict()
         # logger.debug('phase_btps {}'.format(phase_btps))
 
         # clean out NaN
-        phase_btps = {k: round(v, 2) for k, v in phase_btps.items() if isinstance(v, float)} or {'0.50': 0.50}
+        # phase_btps = {k: round(v, 2) for k, v in phase_btps.items() if isinstance(v, float)} or {'0.50': 0.50}
         # logger.debug('cleaned phase_btps {}'.format(phase_btps))
 
         # input('>> ')
         return {
             'actions': phase_actions,
-            'btps': phase_btps,
+            # 'btps': phase_btps,
         }
 
     @classmethod
-    def analyze_stats(cls, sea, seat):
+    def analyze_stats(cls, sea, seat, res=None):
         # logger.info('analyzing stats returned...')
 
-        sea = sea[:cls.SAMPLE_SIZE]
-        res = sea.execute()
+        if not res:
+            res = sea.execute()
 
         prev_score = float('inf')
         prev_date = datetime.datetime.utcnow()
@@ -315,7 +321,7 @@ class ES:
 
         aggs = {
             'askies': res.aggregations.mesam.aksies.buckets,
-            'percs': res.aggregations.mesam.pottie['values'],
+            # 'percs': res.aggregations.mesam.pottie['values'],
         }
         data['aggs'] = aggs
 
