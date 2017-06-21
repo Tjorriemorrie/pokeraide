@@ -72,6 +72,13 @@ def chips(site, seats):
 cli.add_command(chips)
 
 
+@click.command()
+def self_play():
+    from self_play.main import main
+    main()
+cli.add_command(self_play)
+
+
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)
     cli(obj={})

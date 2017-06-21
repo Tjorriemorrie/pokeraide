@@ -343,25 +343,25 @@ class ES:
                 dist[p] = o
                 p += max(0.01, stats[o])
                 dist[p - 0.001] = o
-        # logger.info('dist = {}'.format(dist))
-        if len(dist) == 1:
-            dist[1] = 'a'
+        # if len(dist) == 1:
+        dist[1] = 'a'
+        logger.info('dist = {}'.format(dist))
 
-        # logger.debug('strength? {}'.format(strength))
+        logger.debug('strength? {}'.format(strength))
         if strength is False:
             return dist
 
         r = ''
-        # logger.debug('dist = {}'.format(type(dist)))
+        logger.debug('dist = {}'.format(type(dist)))
         for _ in range(20):
             p = _ * 5 / 100
             i_pos = dist.bisect_key_left(p)
-            # logger.debug('i_pos {} / {}'.format(i_pos, len(dist)))
+            logger.debug('i_pos {} / {}'.format(i_pos, len(dist)))
             k = dist.iloc[i_pos]
             v = dist[k]
             r += v.upper() if (1 - strength) <= p <= 1 else v.lower()
-            # logger.debug('bisected {} from {} at {}%'.format(v, k, r))
-        # logger.debug('dist_stats {}'.format(r))
+            logger.debug('bisected {} from {} at {}%'.format(v, k, r))
+        logger.debug('dist_stats {}'.format(r))
         return r
 
     @classmethod

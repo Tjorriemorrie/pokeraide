@@ -75,7 +75,7 @@ class Scraper(View):
         # board moved to help finish phase
         self.board_moved = False
 
-        # if tlc/btn cannot be found, drop existing game after 5 seconds
+        # if tlc/button cannot be found, drop existing game after 5 seconds
         self.drop_game_start = None
 
     def load_files(self):
@@ -137,7 +137,7 @@ class Scraper(View):
                 except NoDealerButtonError as e:
                     logger.error(e)
                     # if self.debug:
-                    #     input('$ really no btn?')
+                    #     input('$ really no button?')
                     time.sleep(0.6)
                     continue
                 else:
@@ -164,7 +164,7 @@ class Scraper(View):
                 #         if 'in' in d['status']:
                 #             self.site.parse_pocket_region(self.img, s)
 
-            # always break (only continue when tlc & btn found)
+            # always break (only continue when tlc & button found)
             break
 
     def check_board(self):
@@ -217,7 +217,7 @@ class Scraper(View):
                 if self.button_moved:
                     logger.debug('button moved! we need to finish up what engine is')
                     self.finish_it()
-                    break
+                    # break
                 elif self.engine.phase in [self.engine.PHASE_GG, self.engine.PHASE_SHOWDOWN]:
                     logger.info('Game comleted but waiting for button move')
                     time.sleep(0.3)
@@ -243,7 +243,7 @@ class Scraper(View):
             time.sleep(0.33)
         else:
             try:
-                self.mc.run(timeout)
+                self.mc.run(2)
             except EngineError as e:
                 logger.error(e)
                 if self.debug:
@@ -257,7 +257,7 @@ class Scraper(View):
         actioned.
         First detect if the phase haven't moved on by checking board cards
         Secondly detect if current player isn't still thinking"""
-        self.run_mc(1)
+        self.run_mc(0.6)
 
         # todo check if gg in expected
         # todo then scan for foe pockets and exit
@@ -278,7 +278,7 @@ class Scraper(View):
                     logger.info('exiting board phase as engine is now in {}'.format(self.engine.phase))
                     return
                 self.check_player_action()
-                self.run_mc(1)
+                self.run_mc(0.6)
                 logger.debug('board moved: engine phase: {}'.format(self.engine.phase))
                 logger.debug('board moved: board map: {}'.format(self.engine.BOARD_MAP[len(self.engine.board)]))
             self.board_moved = False
@@ -304,7 +304,7 @@ class Scraper(View):
             # if player is still thinking, then so can we
             if current_s == self.engine.q[0][0]:
                 logger.debug('player to act {} is still thinking, so can we...'.format(current_s))
-                self.run_mc(3)
+                self.run_mc(2)
 
             # player (in engine) to act is not the one thinking on screen
             # whilst it is not the expected player to act use the same current img to catch up
@@ -352,7 +352,8 @@ class Scraper(View):
             logger.debug('balance diff = {} (bal {} - scr {})'.format(
                 balance_diff, self.players[s]['balance'], balances_scr[s]))
             if balance_diff < 0:
-                raise BalancesError('Player {} already received {} winnings!'.format(s, balance_diff))
+                logger.error('Player {} already received {} winnings!'.format(s, balance_diff))
+                balance_diff = 0
 
             contribs_scr = self.site.parse_contribs(self.img, s).get(s, 0)
             contrib_diff = contribs_scr - self.engine.data[s]['contrib']
@@ -405,6 +406,7 @@ class Scraper(View):
         # cut tree based on action
         # do not have to cut tree when button moved
         if not self.button_moved:
+            # self.mc.analyze_tree()
             child_nodes = self.mc.tree.children(self.mc.tree.root)
             logger.debug('{} child nodes on tree {}'.format(len(child_nodes), self.mc.tree.root))
             # logger.info('nodes:\n{}'.format(json.dumps([n.tag for n in child_nodes], indent=4, default=str)))
@@ -453,6 +455,7 @@ class Scraper(View):
         if pocket:
             self.engine.data[s]['hand'] = pocket
             logger.info('Player {} is showing {}'.format(s, pocket))
+            self.print()
             return pocket
 
         logger.info('Player has no cards')
@@ -479,11 +482,11 @@ class Scraper(View):
         """
         # for joining table first time only
         if not self.btn:
-            logger.info('init btn at {}'.format(self.btn_next))
+            logger.info('init button at {}'.format(self.btn_next))
             self.btn = self.btn_next
             return
 
-        logger.info('btn moved: creating new game')
+        logger.info('button moved: creating new game')
         self.btn = self.btn_next
 
         balances = self.check_balances()
@@ -595,6 +598,9 @@ class Scraper(View):
         if pocket:
             self.engine.data[hero]['hand'] = pocket
             logger.info('Hero (p{}) hand set to {}'.format(hero, pocket))
+            self.print()
+        else:
+            logger.error('No hero pocket found!')
 
     def finish_it(self):
         """Finish the game. Calculate the winner and winnings

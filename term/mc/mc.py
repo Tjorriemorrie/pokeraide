@@ -669,6 +669,29 @@ class MonteCarlo:
             # logger.debug('new {} for {} with data {}'.format(node_tag, s, action_node))
         # logger.info('{} node actions added'.format(len(action_nodes)))
 
+    def analyze_tree(self):
+        """Analyze tree to inspect best action from ev"""
+        # self.tree.show()
+
+        # check all finished paths
+        for path in self.tree.paths_to_leaves():
+
+            # skip untraversed end
+            last_node = self.tree[path[-1]]
+            if not last_node.data['traversed']:
+                logger.debug('skipping untraversed endpoint {}'.format(last_node.tag))
+                continue
+
+            # show all actions
+            for nid in path:
+                node = self.tree[nid]
+                d = node.data
+                logger.info('Node: {} ev={}'.format(node.tag, d['ev']))
+
+
+        0/0
+        input('$ check tree')
+
 
 class MonteCarloError(Exception):
     """Exception raised by MC"""

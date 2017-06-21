@@ -30,7 +30,6 @@ class View:
             d = self.engine.data[s]
 
             r = '{:14}'.format(p['name'] or '---')
-            r += '{:3}'.format(s)
 
             if not p['status']:
                 print(Style.DIM + Fore.RED + r)
@@ -38,14 +37,15 @@ class View:
 
             r += '{:7}'.format(p['balance'] + d['contrib'])
             r += '{:>8}'.format(' '.join(d['hand']))
+            r += '{:3}'.format(s)
+            r += '{:4d}%'.format(int((1 - d['strength']) * 100))
+            r += '{:>6} '.format(d['matched'] + d['contrib'] or '')
             r += '{:3}'.format('')
 
             for phase in ['preflop', 'flop', 'turn', 'river']:
                 r += '{:5} '.format(''.join(pi['action'].upper() if pi['aggro'] else pi['action'] for pi in d[phase]))
                 if self.engine.phase == phase:
                     break
-
-            r += '{:>6} '.format(d['matched'] + d['contrib'] or '')
 
             # if self.engine.phase != self.engine.PHASE_SHOWDOWN and 'in' in d['status']:
             #     d['stats'] = ES.player_stats(self.engine, s)
@@ -65,15 +65,17 @@ class View:
             print(Style.NORMAL + Fore.CYAN + r)
 
         print('\n')
-        print(Style.NORMAL + Fore.WHITE + 'Actions:')
 
-        actions = [(c.data['action'], c.data['ev'], c.data['traversed'])
-                   for c in self.mc.tree.children(self.mc.tree.root)]
-        actions.sort(key=itemgetter(1), reverse=True)
-        for action in actions:
-            a = '{:=+10d}'.format(int(action[1] * 100))
-            a += '{:3d} '.format(action[2])
-            a += '{}'.format(action[0])
-            print(Style.NORMAL + Fore.WHITE + a)
+        if self.engine.data[self.site.HERO]['status'] == 'in':
+            print(Style.NORMAL + Fore.WHITE + 'Actions:')
 
-        print('\n')
+            actions = [(c.data['action'], c.data['ev'], c.data['traversed'])
+                       for c in self.mc.tree.children(self.mc.tree.root)]
+            actions.sort(key=itemgetter(1), reverse=True)
+            for action in actions:
+                a = '{:=+6d}'.format(int(action[1] // self.engine.bb_amt))
+                a += '{:5d} '.format(action[2])
+                a += '{}'.format(action[0])
+                print(Style.NORMAL + Fore.WHITE + a)
+
+            print('\n')

@@ -77,7 +77,7 @@ class PokerStars(BaseSite):
         self.wdw_box = None
 
         # names
-        self.__names = {s: deque([], 11) for s in range(1, self.seats + 1)}
+        self.__names = {s: deque([], 5) for s in range(1, self.seats + 1)}
 
         # dealer button data
         self.btn_box = None
@@ -125,7 +125,7 @@ class PokerStars(BaseSite):
 
     def parse_dealer(self, img):
         """Parses for dealer button. If no button raise exception.
-        Btnbox is where the previous button was located. first check if the btn is on the same
+        Btnbox is where the previous button was located. first check if the button is on the same
             spot with mse. if btnbox is not set, locate it via template matching"""
         btn = self.coords['button']
         logger.info('parsing dealer button')
@@ -148,7 +148,7 @@ class PokerStars(BaseSite):
                 self.btn_box = None
                 raise NoDealerButtonError('Could not match dealer button template')
             self.btn_box = (btn_loc[0], btn_loc[1], btn_loc[0] + btn['shape'][0], btn_loc[1] + btn['shape'][1])
-            logger.debug('btn box = {}'.format(self.btn_box))
+            logger.debug('button box = {}'.format(self.btn_box))
             for s, seat_loc in btn['seats'].items():
                 if seat_loc == btn_loc:
                     self.btn_seat = s

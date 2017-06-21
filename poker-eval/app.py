@@ -3,7 +3,7 @@ from pokereval import PokerEval
 
 
 GAME = 'holdem'
-ITERATIONS = 10000
+ITERATIONS = 20000
 
 app = Flask(__name__)
 pe = PokerEval()
