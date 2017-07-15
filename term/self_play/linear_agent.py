@@ -33,13 +33,13 @@ class LinearAgent1:
 
         x = {c: 0 for c in columns}
         y = [0] * len(columns)
-        self.e.fit(input_fn=lambda: ([x], [y]), max_steps=0)
+        self.e.fit(input_fn=self.input_predict, max_steps=0)
         logger.info('{} fitted'.format(self.NAME))
 
-    def input_predict(self, obs):
+    def input_predict(self, obs=None):
         x = []
         y = []
-        for s in obs:
+        for s in obs or []:
             x.append({c: s[c] for c in columns})
             y.append([0] * len(columns))
         logger.info('x: {}'.format(x))

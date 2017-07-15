@@ -138,7 +138,7 @@ class Engine:
         players_from_button = [(s, p) for s, p in self.players.items() if s >= self.button]
         # logger.debug('players_from_button {}'.format(players_from_button))
         players_rest = [(s, p) for s, p in self.players.items() if s < self.button]
-        logger.debug('players_rest {}'.format(players_rest))
+        # logger.debug('players_rest {}'.format(players_rest))
         self.q = deque(players_from_button + players_rest)
         # logger.info('new deque created for this phase {}'.format(self.q))
         self.rotate()

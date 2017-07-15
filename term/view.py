@@ -73,7 +73,7 @@ class View:
                        for c in self.mc.tree.children(self.mc.tree.root)]
             actions.sort(key=itemgetter(1), reverse=True)
             for action in actions:
-                a = '{:=+6d}'.format(int(action[1] // self.engine.bb_amt))
+                a = '{:=+6d}'.format(int((1000 * action[1]) // self.engine.bb_amt))
                 a += '{:5d} '.format(action[2])
                 a += '{}'.format(action[0])
                 print(Style.NORMAL + Fore.WHITE + a)

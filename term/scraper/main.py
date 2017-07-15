@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 class Scraper(View):
-    """Runs labels scraper for labels site. Will use the site to do the scraping, and with the data
+    """Runs a scraper for a site. Will use the site to do the scraping, and with the data
     calculate what action needs to be taken and pass that into the engine and MC"""
 
     PATH_DEBUG = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'debug')
@@ -33,7 +33,7 @@ class Scraper(View):
         'c': 'call',
         'b': 'bet',
         'r': 'raise',
-        'labels': 'allin',
+        'a': 'allin',
     }
 
     def __init__(self, site_name, seats, debug=False, replay=False, observe=False):
@@ -68,7 +68,7 @@ class Scraper(View):
         }
         # do not add engine & mc
         self.btn = None
-        # not currently in labels game
+        # not currently in a game
         self.waiting_for_new_game = True
         # button moved
         self.button_moved = False
@@ -201,9 +201,9 @@ class Scraper(View):
             if self.observe:
                 continue
 
-            # we are ready for labels new game
+            # we are ready for a new game
             if self.waiting_for_new_game:
-                logger.debug('waiting for labels new game...')
+                logger.debug('waiting for a new game...')
                 if self.button_moved:
                     logger.debug('button moved and waiting for new game: create new game')
                     self.start_new_game()
@@ -253,7 +253,7 @@ class Scraper(View):
         self.print()
 
     def wait_player_action(self):
-        """Think labels little. Always think at least 1 second after every player
+        """Think a little. Always think at least 1 second after every player
         actioned.
         First detect if the phase haven't moved on by checking board cards
         Secondly detect if current player isn't still thinking"""
@@ -478,7 +478,7 @@ class Scraper(View):
         Get small blind and big blind.
         Create new engine
         Create new MC
-        Not waiting for labels new game anymore.
+        Not waiting for a new game anymore.
         """
         # for joining table first time only
         if not self.btn:
@@ -528,7 +528,7 @@ class Scraper(View):
         logger.info('checked player names')
 
     def check_balances(self):
-        """Check balances of players for new game. Balances of players without labels balance
+        """Check balances of players for new game. Balances of players without a balance
         will not be returned, thus loop over seats and set status to out
         Also check for ante and set amount
         """
@@ -618,7 +618,7 @@ class Scraper(View):
         # todo img already of new round
         # todo but somewhere hands should be scraped
 
-        # if we do not have labels winner then estimate winner from balances
+        # if we do not have a winner then estimate winner from balances
         if not self.engine.winner:
             balances = {}
             for s, d in self.engine.data.items():
@@ -701,7 +701,7 @@ class Scraper(View):
                         cmd = ['c']
                     else:
                         cmd = ['f']
-                # made labels bet but lost
+                # made a bet but lost
                 elif not contrib_short and lost_money:
                     if s == winner:
                         raise BalancesError('Winner cannot make bet and lose')
@@ -738,11 +738,11 @@ class Scraper(View):
             input('$ check gg')
 
     def cards(self):
-        """Generate cards for labels site"""
+        """Generate cards for a site"""
         self.site.generate_cards()
 
 
     def chips(self):
-        """Generate cards for labels site"""
+        """Generate cards for a site"""
         self.site.generate_chips()
 

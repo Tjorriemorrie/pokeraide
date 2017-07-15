@@ -30,9 +30,9 @@ cli.add_command(table)
 
 
 @click.command()
-@click.option('--profile', is_flag=True)
-@click.option('--observe', is_flag=True)
-@click.option('--replay', is_flag=True)
+@click.option('--profile', is_flag=True, help='cprofile app for performance')
+@click.option('--observe', is_flag=True, help='will not run mc')
+@click.option('--replay', is_flag=True, help='will reuse saved images')
 @click.argument('site')
 @click.argument('seats', type=click.INT)
 @click.pass_context
