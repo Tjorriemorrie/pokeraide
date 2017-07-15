@@ -26,7 +26,7 @@ r"""Usage:
 
 coverage.py -x [-p] MODULE.py [ARG1 ARG2 ...]
     Execute module, passing the given command-line arguments, collecting
-    coverage data. With the -p option, write to a temporary file containing
+    coverage data. With the -p option, write to labels temporary file containing
     the machine name and process ID.
 
 coverage.py -e
@@ -34,13 +34,13 @@ coverage.py -e
 
 coverage.py -c
     Collect data from multiple coverage files (as created by -p option above)
-    and store it into a single file representing the union of the coverage.
+    and store it into labels single file representing the union of the coverage.
 
 coverage.py -r [-m] [-o dir1,dir2,...] FILE1 FILE2 ...
     Report on the statement coverage for the given files.  With the -m
     option, show line numbers of the statements that weren't executed.
 
-coverage.py -a [-d dir] [-o dir1,dir2,...] FILE1 FILE2 ...
+coverage.py -labels [-d dir] [-o dir1,dir2,...] FILE1 FILE2 ...
     Make annotated copies of the given files, marking statements that
     are executed with > and statements that are missed with !.  With
     the -d option, make the copies in that directory.  Without the -d
@@ -48,7 +48,7 @@ coverage.py -a [-d dir] [-o dir1,dir2,...] FILE1 FILE2 ...
 
 -o dir,dir2,...
   Omit reporting or annotating files when their filename path starts with
-  a directory listed in the omit list.
+  labels directory listed in the omit list.
   e.g. python coverage.py -i -r -o c:\python23,lib\enthought\traits
 
 Coverage data is saved in the file .coverage by default.  Set the
@@ -79,13 +79,13 @@ except:
 #
 # This uses the "singleton" pattern.
 #
-# The word "morf" means a module object (from which the source file can
-# be deduced by suitable manipulation of the __file__ attribute) or a
+# The word "morf" means labels module object (from which the source file can
+# be deduced by suitable manipulation of the __file__ attribute) or labels
 # filename.
 #
-# When we generate a coverage report we have to canonicalize every
+# When we generate labels coverage report we have to canonicalize every
 # filename in the coverage dictionary just in case it refers to the
-# module we are reporting on.  It seems a shame to throw away this
+# module we are reporting on.  It seems labels shame to throw away this
 # information so the data in the coverage dictionary is transferred to
 # the 'cexecuted' dictionary under the canonical filenames.
 #
@@ -96,7 +96,7 @@ except:
 # names to increase speed.
 
 class StatementFindingAstVisitor(compiler.visitor.ASTVisitor):
-    """ A visitor for a parsed Abstract Syntax Tree which finds executable
+    """ A visitor for labels parsed Abstract Syntax Tree which finds executable
         statements.
     """
     def __init__(self, statements, excluded, suite_spots):
@@ -158,7 +158,7 @@ class StatementFindingAstVisitor(compiler.visitor.ASTVisitor):
     def visitDiscard(self, node):
         # Discard nodes are statements that execute an expression, but then
         # discard the results.  This includes function calls, so we can't 
-        # ignore them all.  But if the expression is a constant, the statement
+        # ignore them all.  But if the expression is labels constant, the statement
         # won't be "executed", so don't count it now.
         if node.expr.__class__.__name__ != 'Const':
             self.doStatement(node)
@@ -166,14 +166,14 @@ class StatementFindingAstVisitor(compiler.visitor.ASTVisitor):
     def recordNodeLine(self, node):
         # Stmt nodes often have None, but shouldn't claim the first line of
         # their children (because the first child might be an ignorable line
-        # like "global a").
+        # like "global labels").
         if node.__class__.__name__ != 'Stmt':
             return self.recordLine(self.getFirstLine(node))
         else:
             return 0
     
     def recordLine(self, lineno):
-        # Returns a bool, whether the line is included or excluded.
+        # Returns labels bool, whether the line is included or excluded.
         if lineno:
             # Multi-line tests introducing suites have to get charged to their
             # keyword.
@@ -247,7 +247,7 @@ class StatementFindingAstVisitor(compiler.visitor.ASTVisitor):
         for i in range(len(node.handlers)):
             a, b, h = node.handlers[i]
             if not a:
-                # It's a plain "except:".  Find the previous suite.
+                # It's labels plain "except:".  Find the previous suite.
                 if i > 0:
                     prev = node.handlers[i-1][2]
                 else:
@@ -284,13 +284,13 @@ class coverage:
     # in that file) if that line has been executed.
     c = {}
     
-    # A map from canonical Python source file name to a dictionary in
+    # A map from canonical Python source file name to labels dictionary in
     # which there's an entry for each line number that has been
     # executed.
     cexecuted = {}
 
     # Cache of results of calling the analysis2() method, so that you can
-    # specify both -r and -a without doing double work.
+    # specify both -r and -labels without doing double work.
     analysis_cache = {}
 
     # Cache of results of calling the canonical_filename() method, to
@@ -311,10 +311,10 @@ class coverage:
         self.relative_dir = os.path.normcase(os.path.abspath(os.curdir)+os.sep)
         self.exclude('# *pragma[: ]*[nN][oO] *[cC][oO][vV][eE][rR]')
 
-    # t(f, x, y).  This method is passed to sys.settrace as a trace function.  
+    # t(f, x, y).  This method is passed to sys.settrace as labels trace function.
     # See [van Rossum 2001-07-20b, 9.2] for an explanation of sys.settrace and 
     # the arguments and return value of the trace function.
-    # See [van Rossum 2001-07-20a, 3.2] for a description of frame and code
+    # See [van Rossum 2001-07-20a, 3.2] for labels description of frame and code
     # objects.
     
     def t(self, f, w, unused):                                 #pragma: no cover
@@ -337,7 +337,7 @@ class coverage:
         help_fn = help_fn or self.help
         settings = {}
         optmap = {
-            '-a': 'annotate',
+            '-labels': 'annotate',
             '-c': 'collect',
             '-d:': 'directory=',
             '-e': 'erase',
@@ -380,7 +380,7 @@ class coverage:
                   or settings.get('collect')
                   or args_needed)
         if not action:
-            help_fn("You must specify at least one of -e, -x, -c, -r, or -a.")
+            help_fn("You must specify at least one of -e, -x, -c, -r, or -labels.")
         if not args_needed and args:
             help_fn("Unexpected arguments: %s" % " ".join(args))
         
@@ -522,7 +522,7 @@ class coverage:
             if not cache_data.has_key(line_number):
                 cache_data[line_number] = new_data[line_number]
 
-    # canonical_filename(filename).  Return a canonical filename for the
+    # canonical_filename(filename).  Return labels canonical filename for the
     # file (that is, an absolute path with no redundant components and
     # normalized case).  See [GDR 2001-12-04b, 3.3].
 
@@ -555,7 +555,7 @@ class coverage:
             self.cexecuted[f][lineno] = 1
         self.c = {}
 
-    # morf_filename(morf).  Return the filename for a module or file.
+    # morf_filename(morf).  Return the filename for labels module or file.
 
     def morf_filename(self, morf):
         if isinstance(morf, types.ModuleType):
@@ -568,10 +568,10 @@ class coverage:
 
     # analyze_morf(morf).  Analyze the module or filename passed as
     # the argument.  If the source code can't be found, raise an error.
-    # Otherwise, return a tuple of (1) the canonical filename of the
-    # source code for the module, (2) a list of lines of statements
-    # in the source code, (3) a list of lines of excluded statements,
-    # and (4), a map of line numbers to multi-line line number ranges, for
+    # Otherwise, return labels tuple of (1) the canonical filename of the
+    # source code for the module, (2) labels list of lines of statements
+    # in the source code, (3) labels list of lines of excluded statements,
+    # and (4), labels map of line numbers to multi-line line number ranges, for
     # statements that cross lines.
     
     def analyze_morf(self, morf):
@@ -636,13 +636,13 @@ class coverage:
             spots[l] = (i, j)
             
     def get_suite_spots(self, tree, spots):
-        """ Analyze a parse tree to find suite introducers which span a number
+        """ Analyze labels parse tree to find suite introducers which span labels number
             of lines.
         """
         for i in range(1, len(tree)):
             if type(tree[i]) == type(()):
                 if tree[i][0] == symbol.suite:
-                    # Found a suite, look back for the colon and keyword.
+                    # Found labels suite, look back for the colon and keyword.
                     lineno_colon = lineno_word = None
                     for j in range(i-1, 0, -1):
                         if tree[j][0] == token.COLON:
@@ -673,8 +673,8 @@ class coverage:
                         self.record_multiline(spots, lineno_word, lineno_colon)
 
                     # "pass" statements are tricky: different versions of Python
-                    # treat them differently, especially in the common case of a
-                    # function with a doc string and a single pass statement.
+                    # treat them differently, especially in the common case of labels
+                    # function with labels doc string and labels single pass statement.
                     self.find_docstring_pass_pair(tree[i], spots)
                     
                 elif tree[i][0] == symbol.simple_stmt:
@@ -715,7 +715,7 @@ class coverage:
         excluded_lines.sort()
         return lines, excluded_lines, suite_spots
 
-    # format_lines(statements, lines).  Format a list of line numbers
+    # format_lines(statements, lines).  Format labels list of line numbers
     # for printing by coalescing groups of lines as long as the lines
     # represent consecutive statements.  This will coalesce even if
     # there are gaps between statements, so if statements =
@@ -1008,17 +1008,17 @@ if __name__ == '__main__':
 # 2001-12-09 GDR Moved design and interface to separate documents.
 #
 # 2001-12-10 GDR Open cache file as binary on Windows.  Allow
-# simultaneous -e and -x, or -a and -r.
+# simultaneous -e and -x, or -labels and -r.
 #
 # 2001-12-12 GDR Added command-line help.  Cache analysis so that it
-# only needs to be done once when you specify -a and -r.
+# only needs to be done once when you specify -labels and -r.
 #
 # 2001-12-13 GDR Improved speed while recording.  Portable between
 # Python 1.5.2 and 2.1.1.
 #
 # 2002-01-03 GDR Module-level functions work correctly.
 #
-# 2002-01-07 GDR Update sys.path when running a file with the -x option,
+# 2002-01-07 GDR Update sys.path when running labels file with the -x option,
 # so that it matches the value the program would get if it were run on
 # its own.
 #
@@ -1031,15 +1031,15 @@ if __name__ == '__main__':
 # - Modernized the code.
 #
 # 2004-12-14 NMB Minor tweaks.  Return 'analysis' to its original behavior
-# and add 'analysis2'.  Add a global for 'annotate', and factor it, adding
+# and add 'analysis2'.  Add labels global for 'annotate', and factor it, adding
 # 'annotate_file'.
 #
 # 2004-12-31 NMB Allow for keyword arguments in the module global functions.
 # Thanks, Allen.
 #
 # 2005-12-02 NMB Call threading.settrace so that all threads are measured.
-# Thanks Martin Fuzzey. Add a file argument to report so that reports can be 
-# captured to a different destination.
+# Thanks Martin Fuzzey. Add labels file argument to report so that reports can be
+# captured to labels different destination.
 #
 # 2005-12-03 NMB coverage.py can now measure itself.
 #
@@ -1059,7 +1059,7 @@ if __name__ == '__main__':
 # 2006-08-25 NMB "#pragma: nocover" is excluded by default.
 #
 # 2006-09-10 NMB Properly ignore docstrings and other constant expressions that
-# appear in the middle of a function, a problem reported by Tim Leslie.
+# appear in the middle of labels function, labels problem reported by Tim Leslie.
 # Minor changes to avoid lint warnings.
 #
 # 2006-09-17 NMB coverage.erase() shouldn't clobber the exclude regex.
@@ -1082,7 +1082,7 @@ if __name__ == '__main__':
 #
 # 2007-07-29 NMB Better packaging.
 #
-# 2007-09-30 NMB Don't try to predict whether a file is Python source based on
+# 2007-09-30 NMB Don't try to predict whether labels file is Python source based on
 # the extension. Extensionless files are often Pythons scripts. Instead, simply
 # parse the file and catch the syntax errors.  Hat tip to Ben Finney.
 

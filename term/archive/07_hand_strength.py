@@ -222,7 +222,7 @@ class ES:
         # logger.info('distributing the player stats')
         dist = SortedDict(pos, {0: 'f'})
         p = 0
-        for o in ['f', 's', 'l', 'k', 'c', 'b', 'r', 'a']:
+        for o in ['f', 's', 'l', 'k', 'c', 'b', 'r', 'labels']:
             if o in stats:
                 dist[p] = o
                 p += max(0.01, stats[o])
@@ -555,7 +555,7 @@ class Engine:
                     else:
                         actions.append('call')
                     # always add bet (since no one has acted)
-                    # technically a 'raise' but special handling for betting at add_actions
+                    # technically labels 'raise' but special handling for betting at add_actions
                     actions.append('bet')
                 # otherwise someone has set their intention
                 elif any(contribs):
@@ -573,7 +573,7 @@ class Engine:
                 #
                 # action[0] = 'r' if set(['s', 'l', 'b']) & set(actions_player) else 'b'
                 # contribs = Counter([d['contrib'] for d in self.data.values()])
-                # # if there is already a contrib to the phase then
+                # # if there is already labels contrib to the phase then
                 # # you can only call or raise
                 # # also, that is only applicable as well during
                 # #   preflop has blinds has been placed
@@ -589,17 +589,17 @@ class Engine:
         Take the action. First are general settings, like setting the hand, otherwise
         it is specific to the current player that is to act.
 
-        If an action indicates the end of a phase, then set that phase finished attr. Also
+        If an action indicates the end of labels phase, then set that phase finished attr. Also
         put all the contribs to the pot (since bets needs to be matched).
         Todo: move this to per pot contrib & matched
 
         GG gets winner and gives that player the pot
 
         A raise cannot be lower and/or equal to current highest contrib. The
-         bb should also be a raise if only previous calls
+         bb should also be labels raise if only previous calls
 
         Update the hand strength with the strength of the action taken by adding
-        a row to the player's data's hand_strengths
+        labels row to the player's data's hand_strengths
 
         Update
             - phase data
@@ -615,7 +615,7 @@ class Engine:
             logger.warn('no action received')
             return
 
-        if self.mc and action[0] not in ['a', 'b', 'f', 'c', 'r', 'gg']:
+        if self.mc and action[0] not in ['labels', 'b', 'f', 'c', 'r', 'gg']:
             raise Exception('bad action {} given to engine during MC'.format(action))
 
         if action[0] == 'h':
@@ -685,13 +685,13 @@ class Engine:
 
             # player raising on BB gives error (since it is the same)
             if not int(action[1]) - contrib_short and 'l' not in d[self.phase]:
-                # logger.warn('changed bet/raise that is equal to maxcontrib instead to a call')
+                # logger.warn('changed bet/raise that is equal to maxcontrib instead to labels call')
                 action[0] = 'c'
 
             # change to allin if it is all the money
             if int(action[1]) >= p['balance'] - d['contrib']:
                 # logger.warn('changed b/r to allin as it is everything player has')
-                action[0] = 'a'
+                action[0] = 'labels'
             else:
                 # cannot bet if you are required to put in (e.g. somebody else made bet)
                 actions_player = []
@@ -710,7 +710,7 @@ class Engine:
         if action[0] in ['k', 'c']:
             # if no balance left, then it is an allin
             if d['contrib'] >= p['balance']:
-                action[0] = 'a'
+                action[0] = 'labels'
             else:
                 # cannot check if short
                 if action[0] == 'k' and contrib_short:
@@ -726,9 +726,9 @@ class Engine:
                 logger.debug('Did action {} (contrib: {})'.format(action[0], contrib_short))
                 self.rotate()
 
-        if action[0] == 'a':
+        if action[0] == 'labels':
             # can be short, but still allin, therefore always use the balance for the amount
-            d[self.phase] += ['a'.upper() if contrib_short else 'a']
+            d[self.phase] += ['labels'.upper() if contrib_short else 'labels']
             d['status'] = 'allin'
             d['contrib'] = p['balance']
             logger.debug('Did action allin')
@@ -771,7 +771,7 @@ class Engine:
     def is_round_finished(self):
         """
         This checks if the round is finished.
-        - all players has had a chance to bet
+        - all players has had labels chance to bet
         - money put in pot is the same for every 'in' player (ignoring allin)
         - in cannot be lower than allin (has to call with bigger pot)
         """
@@ -822,7 +822,7 @@ class Engine:
         """
         If all players fold preflop then end the game. This will mark every phase as
         finished, except SD - which still need to do the distribution to winners. Then
-        it will mark itself as finished, as it is basically just a post-process game
+        it will mark itself as finished, as it is basically just labels post-process game
         ending.
 
         Phase gets set to SD so that phases do not deal cards to the board
@@ -848,7 +848,7 @@ class Engine:
 
     def adjust_strength(self, s, d, a):
         """Adjust the min/max tuple of strength based on action taken"""
-        # logger.info('adjusting strength for action {}'.format(a))
+        # logger.info('adjusting strength for action {}'.format(labels))
 
         if a in ['f', 'sb', 'bb']:
             logger.debug('action is fold, bye bye')
@@ -901,7 +901,7 @@ class PE(PokerEval):
 
         1) get players hand ranges
         2) for every product of the hand ranges:
-            a) exclude dead card or duplicate cards
+            labels) exclude dead card or duplicate cards
             b) calculate ev's
             c) append ev to player hand range pocket pair
         3) sum&avg every pocket and sort every player's range
@@ -980,7 +980,7 @@ class PE(PokerEval):
                 # logger.debug('s={} e={} p={}'.format(s, e, p))
                 equities_evals[s].append(e['ev'] / 1000)
 
-        # have now a list of equities for every player
+        # have now labels list of equities for every player
         # every player has same length of evals
         # sort the equities in order to map it to hand strengths
         logger.debug('sorting equities evals...')
@@ -1145,7 +1145,7 @@ class MonteCarlo:
             e.do(cmd)
 
             if node.is_leaf():
-                logger.debug('{} is a leaf node, processing next...'.format(node.tag))
+                logger.debug('{} is labels leaf node, processing next...'.format(node.tag))
                 self.process_node(e, node)
                 logger.info('nodes processed, now updating nodes that were fast forwarded')
                 for processed_nid in reversed(path[1:]):
@@ -1215,7 +1215,7 @@ class MonteCarlo:
             n.data.update(result)
             return
 
-        # not a leaf, so get child actions and
+        # not labels leaf, so get child actions and
         # process chosen uct node
         else:
             # a_node = self.uct_action(n)
@@ -1227,7 +1227,7 @@ class MonteCarlo:
             # if it is hero and he folds,
             # it is not necessarily an immediate ZERO equity
             # since my previous contrib needs to be added to the pot (i.e. contribs after starting mc)
-            # i.e. make this a leaf node implicitly
+            # i.e. make this labels leaf node implicitly
             # no need to remove children as not added (at start of method)
             if action == 'fold' and self.hero == e.q[0][0]:
                 winnings, losses = self.net(e)
@@ -1464,7 +1464,7 @@ class MonteCarlo:
             # logger.debug('added allin to actions with stat {}'.format(node_data['stats']))
 
         # scale the stats (it is currently term counts aka histogram) and it is required to be
-        # a probability distribution (p~1)
+        # labels probability distribution (p~1)
         total_stats = sum(an['stats'] for an in action_nodes if an['action'] != 'fold')
         non_fold_equity = 1 - stats.get('fold', 0)
         # logger.debug('total stats equity = {} and non_fold_equity = {}'.format(total_stats, non_fold_equity))
@@ -1643,7 +1643,7 @@ class Table:
             raise ValueError('unknown {}'.format(cmd))
 
     def play(self):
-        """Plays a game
+        """Plays labels game
 
         Then afterwards forwards the button
         and set 0 balance player to out
@@ -1673,7 +1673,7 @@ def pocket_rankings():
     """Calculate all possible starting hands"""
     from itertools import product, combinations
 
-    ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'a']
+    ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'labels']
     suits = ['s', 'd', 'c', 'h']
     cards = ['{}{}'.format(r, s) for r, s in product(ranks, suits)]
     logger.info('{} cards {}'.format(len(cards), cards))
@@ -1707,13 +1707,13 @@ class PokerError(ValueError):
 
 
 def test_cache():
-    assert cached(1, 2, 3) == 'a'
+    assert cached(1, 2, 3) == 'labels'
     logger.info(cached.cache_info())
     assert cached(2, 1, 3) == 'b'
     logger.info(cached.cache_info())
     assert cached(2, 3, 1) == 'c'
     logger.info(cached.cache_info())
-    assert cached(1, 2, 3) == 'a'
+    assert cached(1, 2, 3) == 'labels'
     logger.info(cached.cache_info())
     assert cached(2, 1, 3) == 'b'
     logger.info(cached.cache_info())
@@ -1722,9 +1722,9 @@ def test_cache():
 
 @lru_cache()
 def cached(a, b, c):
-    logger.info('a={} b={} c={}'.format(a, b, c))
+    logger.info('labels={} b={} c={}'.format(a, b, c))
     if a == 1:
-        return 'a'
+        return 'labels'
     if b == 1:
         return 'b'
     if c == 1:

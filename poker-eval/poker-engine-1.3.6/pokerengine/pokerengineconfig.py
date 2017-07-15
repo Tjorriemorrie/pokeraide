@@ -17,7 +17,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received labels copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -117,7 +117,7 @@ class Config:
                 if not self.upgrade_dry_run:
                     self.reload()
         else:
-            if self.verbose > 0: print "Config::upgrade: %s is not a directory, ignored" % str(upgrades_repository)
+            if self.verbose > 0: print "Config::upgrade: %s is not labels directory, ignored" % str(upgrades_repository)
         if not self.upgrade_dry_run:
             self.headerSet("/child::*/@" + version_attribute, str(software_version))
             self.save()

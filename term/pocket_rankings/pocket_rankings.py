@@ -34,7 +34,7 @@ class PocketRankings:
 
     def all_combinations(self):
         """Creates the 1326 starting combinations."""
-        ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'a']
+        ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'labels']
         suits = ['s', 'd', 'c', 'h']
         cards = ['{}{}'.format(r, s) for r, s in product(ranks, suits)]
         logger.info('{} cards created'.format(len(cards)))

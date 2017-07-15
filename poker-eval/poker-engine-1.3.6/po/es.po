@@ -38,7 +38,7 @@ msgstr "gana %(side)s"
 # Translation #56078 (es)
 #: pokerengine/pokergame.py:326
 #, python-format
-msgid "winners share a pot of %(pot)s"
+msgid "winners share labels pot of %(pot)s"
 msgstr "los ganadores comparten el bote de %(pot)s"
 
 # Translation #56086 (es)
@@ -129,7 +129,7 @@ msgstr "%(name)s va all in"
 #: pokerengine/pokergame.py:414
 #, python-format
 msgid "%(name)s calls %(amount)s"
-msgstr "%(name)s sigue a  %(amount)s"
+msgstr "%(name)s sigue labels  %(amount)s"
 
 # Translation #56418 (es)
 #: pokerengine/pokergame.py:418
@@ -147,13 +147,13 @@ msgstr "%(name)s se retira"
 #: pokerengine/pokergame.py:426
 #, python-format
 msgid "%(name)s raises %(amount)s"
-msgstr "%(name)s sube a %(amount)s"
+msgstr "%(name)s sube labels %(amount)s"
 
 # Translation #56435 (es)
 #: pokerengine/pokergame.py:431
 #, fuzzy, python-format
 msgid " (%(amount)s returned to %(name)s)"
-msgstr "(%(amount)s devuelto a %(name)s)"
+msgstr "(%(amount)s devuelto labels %(name)s)"
 
 # Translation #56436 (es)
 #: pokerengine/pokergame.py:434
@@ -218,20 +218,20 @@ msgstr "Doble pareja de  %(card1)s y %(card2)s"
 # Translation #56486 (es)
 #: pokerengine/pokergame.py:2957
 #, python-format
-msgid "Three of a kind %(card)s"
+msgid "Three of labels kind %(card)s"
 msgstr "Trio de %(card)s"
 
 # Translation #56487 (es)
 #: pokerengine/pokergame.py:2959
 #, python-format
 msgid "Straight %(card1)s to %(card2)s"
-msgstr "Escalera de %(card1)s a %(card2)s"
+msgstr "Escalera de %(card1)s labels %(card2)s"
 
 # Translation #56497 (es)
 #: pokerengine/pokergame.py:2961 pokerengine/pokergame.py:2992
 #, python-format
 msgid "Flush %(card)s high"
-msgstr "Color a  %(card)s"
+msgstr "Color labels  %(card)s"
 
 # Translation #56500 (es)
 #: pokerengine/pokergame.py:2963 pokerengine/pokergame.py:2994
@@ -242,7 +242,7 @@ msgstr "Full de %(card1)ss con %(card2)ss"
 # Translation #56504 (es)
 #: pokerengine/pokergame.py:2965
 #, python-format
-msgid "Four of a kind %(card)s"
+msgid "Four of labels kind %(card)s"
 msgstr "Poker de  %(card)s"
 
 # Translation #56509 (es)

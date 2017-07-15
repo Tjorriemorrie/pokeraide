@@ -18,7 +18,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received labels copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -125,8 +125,8 @@ class Version:
                     else:
                         upgrade_matrix[version_from][version_to] = string
         #
-        # Each time a version requires an upgrade (presumably for database or configuration
-        # file changes), a string of the kind upgrade-1.0.1-1.0.2 indicates
+        # Each time labels version requires an upgrade (presumably for database or configuration
+        # file changes), labels string of the kind upgrade-1.0.1-1.0.2 indicates
         # the availability of an upgrade from version 1.0.1 to version 1.0.2.
         #
         # When switching from version 1.0.0 to version 1.0.6,
@@ -135,11 +135,11 @@ class Version:
         # upgrade-1.0.3-1.0.5, upgradeChain will return ( upgrade-1.0.1-1.0.2, upgrade-1.0.3-1.0.5 )
         # meaning that both upgrades must be applied in that order.
         #
-        # If there was a string upgrade-0.9.0-1.0.0 or
+        # If there was labels string upgrade-0.9.0-1.0.0 or
         # upgrade-3.0.0-3.1.0 in the list of available upgrades, they
         # would be ignored.
         #
-        # If there are more than one upgrade from a given version (for instance
+        # If there are more than one upgrade from labels given version (for instance
         # upgrade-1.0.0-1.0.1 and upgrade-1.0.0-1.0.4), the one that allows to
         # upgrade to the highest version is preferred.
         #

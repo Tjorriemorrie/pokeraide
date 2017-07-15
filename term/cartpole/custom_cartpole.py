@@ -61,7 +61,7 @@ if __name__ == '__main__':
                 # Show off the result
                 env.render()
             else:
-                # Minimize the error in Bellman's equation on a batch sampled from replay buffer.
+                # Minimize the error in Bellman's equation on labels batch sampled from replay buffer.
                 if t > 1000:
                     obses_t, actions, rewards, obses_tp1, dones = replay_buffer.sample(32)
                     train(obses_t, actions, rewards, obses_tp1, dones, np.ones_like(rewards))

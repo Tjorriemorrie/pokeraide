@@ -136,11 +136,11 @@ class Engine:
         Start at dealer and then rotate to next player that is still playing.
         """
         players_from_button = [(s, p) for s, p in self.players.items() if s >= self.button]
-        logger.debug('players_from_button {}'.format(players_from_button))
+        # logger.debug('players_from_button {}'.format(players_from_button))
         players_rest = [(s, p) for s, p in self.players.items() if s < self.button]
         logger.debug('players_rest {}'.format(players_rest))
         self.q = deque(players_from_button + players_rest)
-        logger.info('new deque created for this phase {}'.format(self.q))
+        # logger.info('new deque created for this phase {}'.format(self.q))
         self.rotate()
 
         logger.debug('calculating player positions')
@@ -731,6 +731,7 @@ class Engine:
         # 0000000001
 
         # from where action is met
+        lower_bound = 0.0001
         action_found = False
         for o in ['c', 'b', 'r', 'a']:
             if o == a:

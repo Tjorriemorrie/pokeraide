@@ -139,7 +139,7 @@ class Table:
             raise ValueError('unknown {}'.format(cmd))
 
     def play(self):
-        """Plays a game
+        """Plays labels game
 
         Then afterwards forwards the button
         and set 0 balance player to out

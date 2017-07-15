@@ -9,7 +9,7 @@ if __name__ == '__main__':
         level=logging.DEBUG,
         format='%(asctime)s - %(levelname)-7s - [%(filename)s:%(funcName)s] %(message)s')
 
-    parser = argparse.ArgumentParser(description='play live on a site')
+    parser = argparse.ArgumentParser(description='play live on labels site')
     parser.add_argument('action', type=str, help='play or record')
     parser.add_argument('site', type=str, help='name of site')
     parser.add_argument('screen', type=str, help='name of screen')

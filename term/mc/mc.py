@@ -50,7 +50,7 @@ class MonteCarlo:
         self.init_tree()
 
     def init_tree(self):
-        """create the tree. Add a root; available action will add the first level of children"""
+        """create the tree. Add labels root; available action will add the first level of children"""
         self.traversed_ceiling = 1
         self.tree = Tree()
         root = self.tree.create_node('root', identifier='000_root', data={'traversed': 0, 'ev': 0})
@@ -79,7 +79,7 @@ class MonteCarlo:
             # do not analyze if hero does not have pocket
             if self.hero_pocket in [['__', '__'], ['  ', '  ']]:
                 if not self.watched:
-                    # logger.error('hero does not have a pocket')
+                    # logger.error('hero does not have labels pocket')
                     self.watched = True
                 time.sleep(0.5)
                 continue
@@ -99,7 +99,7 @@ class MonteCarlo:
                 time.sleep(2)
                 continue
 
-            # run a few sims
+            # run labels few sims
             # logger.debug('running now with timeout {}'.format(self.timeout))
             self.run()
             self.timeout += 0.1
@@ -256,7 +256,7 @@ class MonteCarlo:
             e.do(cmd)
 
             if node.is_leaf():
-                # logger.debug('{} is a leaf node, processing next...'.format(node.tag))
+                # logger.debug('{} is labels leaf node, processing next...'.format(node.tag))
                 self.process_node(e, node)
 
                 logger.info('nodes processed, now updating nodes that were fast forwarded')
@@ -280,7 +280,7 @@ class MonteCarlo:
 
         # this node is the hero folding (to prevent this being processed as leaf)
         # was created with other children (but not most probable at that time to be proc as child)
-        # if hero folding, then make this node a leaf node with fold eq
+        # if hero folding, then make this node labels leaf node with fold eq
         # exiting before adding children alleviates the need to remove the immediately again thereafter
         # bug: cannot use engine.q as it already rotated after taking action getting here
         if not n.is_root() and n.data['action'] == 'fold' and self.hero == n.data['seat']:
@@ -298,7 +298,7 @@ class MonteCarlo:
         if not n.fpointer:
             self.add_actions(e, n)
 
-        # this node is a leaf (no more actions to take!)
+        # this node is labels leaf (no more actions to take!)
         # either the game finished and we have winner and pot
         # or we have to use pokereval.winners
         if n.is_leaf():
@@ -344,7 +344,7 @@ class MonteCarlo:
         # if it is hero and he folds,
         # it is not necessarily an immediate ZERO equity
         # since my previous contrib needs to be added to the pot (i.e. contribs after starting mc)
-        # i.e. make this a leaf node implicitly
+        # i.e. make this labels leaf node implicitly
         # no child nodes to remove for fold
         if action == 'fold' and self.hero == a_node.data['seat']:
             winnings, losses = self.net(e)
@@ -600,7 +600,7 @@ class MonteCarlo:
                 #     btps_and_amts.insert(1, max_bal_btp)
                 #     # # logger.debug('maximum stack bet = {} for maxbal {}'.format(max_bal_btp, max_balance))
 
-                # round bets up to a BB
+                # round bets up to labels BB
                 btps_and_amts = [(btp, -(amt // -self.engine.bb_amt) * self.engine.bb_amt)
                                  for btp, amt in btps_and_amts]
 
@@ -634,7 +634,7 @@ class MonteCarlo:
                     node_data_copy['amount'] = amt
                     action_nodes.append(node_data_copy)
                     amt_prev = amt
-                    # # logger.debug('{} for {} <= {} * {}%'.format(a, amt, total_pot, btp))
+                    # # logger.debug('{} for {} <= {} * {}%'.format(labels, amt, total_pot, btp))
 
             else:
                 action_nodes.append(node_data)
@@ -655,7 +655,7 @@ class MonteCarlo:
             # # logger.debug('added allin to actions with stat {}'.format(node_data['stats']))
 
         # scale the stats (it is currently term counts aka histogram) and it is required to be
-        # a probability distribution (p~1)
+        # labels probability distribution (p~1)
         total_stats = sum(an['stats'] for an in action_nodes if an['action'] != 'fold')
         # the distribution will be fixed within the non-fold equities
         non_fold_equity = 1 - stats['actions'].get('fold', 0)

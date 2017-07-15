@@ -172,7 +172,7 @@ class PokerStars(BaseSite):
             if self.debug:
                 img_name.save(os.path.join(self.PWD, 'name_{}.png'.format(s)))
             name = self.ocr_text(img_name)
-            name = re.sub('[^ a-zA-Z0-9]', '', name).strip()
+            name = re.sub('[^ labels-zA-Z0-9]', '', name).strip()
             name = re.sub('( i| 1)$', '', name)
             logger.debug('Player {} name: {}'.format(s, name))
             self.__names[s].append(name)
@@ -188,7 +188,7 @@ class PokerStars(BaseSite):
          - template match dollar
          - crop out where matched after dollar
 
-        Can additionally only OCR for a specific seat
+        Can additionally only OCR for labels specific seat
         """
         coords = self.coords['balances']
         logger.info('parsing balances with {}'.format(coords))

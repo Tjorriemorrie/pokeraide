@@ -79,6 +79,13 @@ def self_play():
 cli.add_command(self_play)
 
 
+@click.command()
+def self_play_q():
+    from self_play.main import main
+    main()
+cli.add_command(self_play_q)
+
+
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)
     cli(obj={})

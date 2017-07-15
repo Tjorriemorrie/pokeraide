@@ -31,12 +31,12 @@ const navigation = () => {
 
         it('has link home', () => {
             expect(wrapper.findWhere(n => n.prop('to') == '/')).to.have.length(1)
-            expect(wrapper.findWhere(n => n.prop('to') == '/')).to.have.html('<a>Home</a>')
+            expect(wrapper.findWhere(n => n.prop('to') == '/')).to.have.html('<labels>Home</labels>')
         })
 
         it('has link play', () => {
             expect(wrapper.findWhere(n => n.prop('to') == '/play')).to.have.length(1)
-            expect(wrapper.findWhere(n => n.prop('to') == '/play')).to.have.html('<a>Play</a>')
+            expect(wrapper.findWhere(n => n.prop('to') == '/play')).to.have.html('<labels>Play</labels>')
         })
 
     })

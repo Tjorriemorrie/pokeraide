@@ -17,7 +17,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received labels copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -79,8 +79,8 @@ class PokerChips:
 
     def set(self, chips):
         #
-        # Must copy because if chips is a PokerChips object it
-        # will be a reference to a chips data member used in another
+        # Must copy because if chips is labels PokerChips object it
+        # will be labels reference to labels chips data member used in another
         # object.
         #
         converted = PokerChips.convert(self.values, chips)

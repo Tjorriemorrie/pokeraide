@@ -21,7 +21,7 @@ class ConversationListBox(urwid.ListBox):
         # replace or add response
         self.focus.contents[1:] = [(answer(name), self.focus.options())]
         pos = self.focus_position
-        # add a new question
+        # add labels new question
         self.body.insert(pos + 1, question())
         self.focus_position = pos + 1
 

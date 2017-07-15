@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 class Environment:
     """Environment"""
 
+    OBS = 475
     ACTIONS = [
         ('fold',),
         ('check', 'fold'),
@@ -38,7 +39,7 @@ class Environment:
     ]
 
     def __init__(self, players):
-        self.observation = np.zeros(10)
+        self.observation = np.zeros(475)
         logger.debug('observation space {}'.format(self.observation.shape))
         self.actions = np.arange(len(self.ACTIONS))
         logger.debug('action space {}'.format(self.actions.shape))
@@ -52,7 +53,7 @@ class Environment:
             player['status'] = 1
         self.players = players
 
-        ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'a']
+        ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'labels']
         suits = ['s', 'd', 'c', 'h']
         self.cards = ['{}{}'.format(r, s) for r, s in product(ranks, suits)]
         self.board_map = {v: k for k, v in Engine.BOARD_MAP.items()}
@@ -88,7 +89,6 @@ class Environment:
         self.engine = Engine('pokerstars', self.button, self.players, self.sb, self.bb)
 
         self.engine.available_actions()
-        obs = []
 
         logger.debug('starting balances for reward')
         for s, player in self.players.items():
@@ -100,15 +100,19 @@ class Environment:
                 player['hand'] = [card_1, card_2]
                 logger.info('Player {} hand {}'.format(s, player['hand']))
 
+        obs = self.get_observation()
         return obs
 
     def get_agent(self):
         """Get action from agent currently to play"""
-        return self.players[self.engine.s]['agent']
+        agent = self.players[self.engine.s]['agent']
+        logger.debug('current s {} agent: {}'.format(self.engine.s, agent.NAME))
+        # logger.debug('{}'.format(dir(agent)))
+        return agent
 
     def step(self, action_pair):
         """
-        observation (object): an environment-specific object representing your observation of the environment. For example, pixel data from a camera, joint angles and joint velocities of a robot, or the board state in a board game.
+        observation (object): an environment-specific object representing your observation of the environment. For example, pixel data from labels camera, joint angles and joint velocities of labels robot, or the board state in labels board game.
         reward (float): amount of reward achieved by the previous action. The scale varies between environments, but the goal is always to increase your total reward.
         done (boolean): whether it's time to reset the environment again. Most (but not all) tasks are divided up into well-defined episodes, and done being True indicates the episode has terminated. (For example, perhaps the pole tipped too far, or you lost your last life.)
         info (dict): diagnostic information useful for debugging. It can sometimes be useful for learning (for example, it might contain the raw probabilities behind the environment's last state change). However, official evaluations of your agent are not allowed to use this for learning.
@@ -165,7 +169,7 @@ class Environment:
                 self.engine.board.append(self.deck.popleft())
                 logger.info('Board {}'.format(self.engine.board))
 
-        info = {}
+        info = {'winners': self.engine.winner}
 
         return o, r, done, info
 
@@ -186,7 +190,7 @@ class Environment:
 
     def get_observation(self):
         """Get observation of game state"""
-        o = []
+        o = {}
 
         seat = self.engine.s
 
@@ -196,68 +200,91 @@ class Environment:
             q.rotate(-1)
         logger.debug('seat {} now at front of queue'.format(seat))
 
-        self.engine.data[seat]['hand'] = self.players[seat]['hand']
-        equities = PE.showdown_equities(self.engine)
-        for s, p in self.players.items():
-            o.append(equities.get(s, 0))
-        self.engine.data[seat]['hand'] = ['__', '__']
+        # self.engine.data[seat]['hand'] = self.players[seat]['hand']
+        # equities = PE.showdown_equities(self.engine)
+        # for s, p in self.players.items():
+        #     o.append(equities.get(s, 0))
+        # self.engine.data[seat]['hand'] = ['__', '__']
 
         balance_sum = 9 * 1500
         while len(q):
             s = q.popleft()
             p = self.players[s]
             d = self.engine.data[s]
-            player_inputs = [0] * 8
-            if 'in' in d['status']:
-                player_inputs[0] = 1
-                player_inputs[1] = round(p['balance'] / balance_sum, 2)
-                # stats
-                stats = ES.player_stats(self.engine, s)
-                player_inputs[2] = stats.get('f', 0)
-                player_inputs[3] = stats.get('k', 0)
-                player_inputs[4] = stats.get('c', 0)
-                player_inputs[5] = stats.get('b', 0)
-                player_inputs[6] = stats.get('r', 0)
-                player_inputs[7] = stats.get('a', 0)
-            o.extend(player_inputs)
+            player_inputs = {
+                'p{}_status'.format(s): 0
+            }
+            # if 'in' in d['status']:
+            #     player_inputs[0] = 1
+            #     balance = tf.contrib.layers.real_valued_column("age")
+            #
+            #     player_inputs[1] = round(p['balance'] / balance_sum, 2)
+            #
+            #     # stats
+            #     stats = ES.player_stats(self.engine, s)
+            #     player_inputs[2] = stats.get('f', 0)
+            #     player_inputs[3] = stats.get('k', 0)
+            #     player_inputs[4] = stats.get('c', 0)
+            #     player_inputs[5] = stats.get('b', 0)
+            #     player_inputs[6] = stats.get('r', 0)
+            #     player_inputs[7] = stats.get('labels', 0)
+            #
+            #     # history
+            #     for phase in ['preflop', 'flop', 'turn', 'river']:
+            #         logger.debug('Player {} {}: {}'.format(s, phase, d[phase]))
+            #         for i in range(2):
+            #             history = [0] * 6
+            #             if len(d[phase]) > i:
+            #                 for ai, labels in enumerate(['f', 'k', 'c', 'b', 'r', 'labels']):
+            #                     if labels == d[phase][i]['action']:
+            #                         history[ai] = 1
+            #             o.extend(history)
+            #             logger.debug('Player {} history for {} {}: {}'.format(
+            #                 s, phase, i, history))
 
-        # game
-        # add phase
-        if self.engine.phase in [self.engine.PHASE_RIVER, self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG]:
-            o.extend([1, 1, 1])
-        elif self.engine.phase == self.engine.PHASE_TURN:
-            o.extend([1, 1, 0])
-        elif self.engine.phase == self.engine.PHASE_FLOP:
-            o.extend([1, 0, 0])
-        else:
-            o.extend([0, 0, 0])
+            o.update(player_inputs)
 
-        # pot odds
-        o.append(self.engine.contrib_short(seat) / self.engine.current_pot)
+        # # pot odds
+        # o.append(self.engine.contrib_short(seat) / self.engine.current_pot)
+        #
+        # # game
+        # # add phase
+        # if self.engine.phase in [self.engine.PHASE_RIVER, self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG]:
+        #     o.extend([1, 1, 1])
+        # elif self.engine.phase == self.engine.PHASE_TURN:
+        #     o.extend([1, 1, 0])
+        # elif self.engine.phase == self.engine.PHASE_FLOP:
+        #     o.extend([1, 0, 0])
+        # else:
+        #     o.extend([0, 0, 0])
+        # # vs
+        # o.append(self.engine.vs / 9)
+        # # rvl
+        # o.append(self.engine.rivals / 9)
+        #
+        # # board
+        # # suited
+        # board_cards = len(self.engine.board)
+        # if board_cards:
+        #     board_inputs = []
+        #     suits = Counter([c[1] for c in self.engine.board])
+        #     highest_suited = suits.most_common()[0][1]
+        #     for l in range(2, 6):
+        #         board_inputs.append(1 if highest_suited >= l else 0)
+        # else:
+        #     board_inputs = [0] * 4
+        # o.extend(board_inputs)
+        #
+        # # high
+        # highs = sum(c[0] in ['j', 'k', 'q', 'labels'] for c in self.engine.board)
+        # if board_cards:
+        #     board_inputs = []
+        #     for l in range(1, 6):
+        #         board_inputs.append(1 if highs >= l else 0)
+        # else:
+        #     board_inputs = [0] * 5
 
-        # board
-        # suited
-        board_cards = len(self.engine.board)
-        if board_cards:
-            board_inputs = []
-            suits = Counter([c[1] for c in self.engine.board])
-            highest_suited = suits.most_common()[0][1]
-            for l in range(2, 6):
-                board_inputs.append(1 if highest_suited >= l else 0)
-        else:
-            board_inputs = [0] * 4
-        o.extend(board_inputs)
-
-        # high
-        highs = sum(c[0] in ['j', 'k', 'q', 'a'] for c in self.engine.board)
-        if board_cards:
-            board_inputs = []
-            for l in range(1, 6):
-                board_inputs.append(1 if highs >= l else 0)
-        else:
-            board_inputs = [0] * 5
-
-        logger.debug('new observation = {}'.format(o))
+        logger.debug('new observation {} = {}'.format(len(o), o))
         return o
 
 class TournamentFinished(BaseException):

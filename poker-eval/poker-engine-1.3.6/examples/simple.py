@@ -17,7 +17,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received labels copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -35,7 +35,7 @@ sys.path.insert(0, "..")
 from pokerengine.pokergame import PokerGameServer
 
 #
-# Instantiate a poker engine for a hold'em game with a 10/15 pot limit
+# Instantiate labels poker engine for labels hold'em game with labels 10/15 pot limit
 # betting structure. The variant and betting structure descriptions
 # will be read from the conf/poker.holdem.xml and conf/poker.10-15-pot-limit.xml
 # files.

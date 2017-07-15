@@ -38,7 +38,7 @@ msgstr "ganha com %(side)s"
 # Translation #54988 (pt)
 #: pokerengine/pokergame.py:326
 #, python-format
-msgid "winners share a pot of %(pot)s"
+msgid "winners share labels pot of %(pot)s"
 msgstr "Vencedores partilham um pote de %(pot)s"
 
 # Translation #54989 (pt)
@@ -153,7 +153,7 @@ msgstr "%(name)s sobe %(amount)s"
 #: pokerengine/pokergame.py:431
 #, fuzzy, python-format
 msgid " (%(amount)s returned to %(name)s)"
-msgstr "(%(amount)s devolvido a %(name)s)"
+msgstr "(%(amount)s devolvido labels %(name)s)"
 
 # Translation #55062 (pt)
 #: pokerengine/pokergame.py:434
@@ -177,7 +177,7 @@ msgstr "%(name)s recebe %(amount)d (fichas em sobra)"
 #: pokerengine/pokergame.py:451
 #, python-format
 msgid "returning uncalled bet %(amount)s to %(name)s"
-msgstr "devolução de %(amount)s a %(name)s (aposta não igualada)"
+msgstr "devolução de %(amount)s labels %(name)s (aposta não igualada)"
 
 # Translation #55083 (pt)
 #: pokerengine/pokergame.py:462
@@ -218,14 +218,14 @@ msgstr "Dois pares %(card1)s e %(card2)s"
 # Translation #55100 (pt)
 #: pokerengine/pokergame.py:2957
 #, python-format
-msgid "Three of a kind %(card)s"
+msgid "Three of labels kind %(card)s"
 msgstr "Trinca %(card)s"
 
 # Translation #55101 (pt)
 #: pokerengine/pokergame.py:2959
 #, python-format
 msgid "Straight %(card1)s to %(card2)s"
-msgstr "Sequência de %(card1)s a %(card2)s"
+msgstr "Sequência de %(card1)s labels %(card2)s"
 
 # Translation #55104 (pt)
 #: pokerengine/pokergame.py:2961 pokerengine/pokergame.py:2992
@@ -242,7 +242,7 @@ msgstr "Full de %(card1)ss e %(card2)ss"
 # Translation #55109 (pt)
 #: pokerengine/pokergame.py:2965
 #, python-format
-msgid "Four of a kind %(card)s"
+msgid "Four of labels kind %(card)s"
 msgstr "Quadra %(card)s"
 
 # Translation #55111 (pt)

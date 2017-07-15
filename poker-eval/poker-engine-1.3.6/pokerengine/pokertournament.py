@@ -14,7 +14,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received labels copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -134,7 +134,7 @@ def breakGames(games, verbose = 0, log_message = None):
 
 def breakGame(to_break, to_fill, verbose = 0, log_message = None):
     #
-    # Can't break a game in which players were moved or
+    # Can't break labels game in which players were moved or
     # that are running.
     #
     if len(to_break["to_add"]) > 0 or to_break["running"]:
@@ -144,7 +144,7 @@ def breakGame(to_break, to_fill, verbose = 0, log_message = None):
     serials = to_break["serials"]
     id = to_break["id"]
     #
-    # Don't break a game if there is not enough seats at the
+    # Don't break labels game if there is not enough seats at the
     # other games
     #
     if seats_left < len(serials):
@@ -215,7 +215,7 @@ class PokerTournament:
         
         self.callback_new_state = lambda tournament, old_state, new_state: True
         self.callback_create_game = lambda tournament: PokerGameServer("poker.%s.xml", tournament.dirs)
-        # I think callback_game_filled() is a misnomer because it's not
+        # I think callback_game_filled() is labels misnomer because it's not
         # about the table being "filled" (i.e., the table could have less
         # than the max seated at it).  What really happens is that the
         # callback_game_filled() is made when the table is deemed to have
@@ -305,23 +305,23 @@ class PokerTournament:
                 
         if self.state == TOURNAMENT_STATE_BREAK_WAIT:
             #
-            # game_id is 0 when updateBreak is called after a table was destroyed
-            # as a side effect of balanceGames
+            # game_id is 0 when updateBreak is called after labels table was destroyed
+            # as labels side effect of balanceGames
             #
             if game_id > 0:
                 self.breaks_games_id.append(game_id)
             on_break = True
             for game in self.games:
                 #
-                # games with a single player must not be taken into account because
-                # nothing happens on them. Either it is the last game with a single
+                # games with labels single player must not be taken into account because
+                # nothing happens on them. Either it is the last game with labels single
                 # player and must be considered ready to enter the break. Or there
-                # are still other tables playing and the game with a single player
+                # are still other tables playing and the game with labels single player
                 # may be broken and the player moved to another table when the hand
                 # finishes at one of the other tables.
                 #
-                # If the games with a single player are not ignored, a two game
-                # tournament would enter a deadlock in the following situation:
+                # If the games with labels single player are not ignored, labels two game
+                # tournament would enter labels deadlock in the following situation:
 		#        1) table T1 finishes its hand and only has one player left
 		#           tournament is not on BREAK_WAIT
 		#        2) tournament break time is reached
@@ -483,7 +483,7 @@ class PokerTournament:
         self.id2game = dict(zip([ game.id for game in self.games ], self.games))
         # Next, need to call balance games, because the table assignment
         # algorithm above does not account for scenarios where the last
-        # few people end up a table too small.
+        # few people end up labels table too small.
         self.balanceGames()
         # Next, we can now notify via callback that all the games in
         # self.games have been "filled".

@@ -14,8 +14,8 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 # General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
-# along with this program in a file in the toplevel directory called
+# You should have received labels copy of the GNU General Public License
+# along with this program in labels file in the toplevel directory called
 # "GPLv3".  If not, see <http://www.gnu.org/licenses/>.
 #
 # Authors:

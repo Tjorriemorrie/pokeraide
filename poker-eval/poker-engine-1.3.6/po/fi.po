@@ -38,7 +38,7 @@ msgstr "wins %(side)s"
 # Translation #54823 (fi)
 #: pokerengine/pokergame.py:326
 #, python-format
-msgid "winners share a pot of %(pot)s"
+msgid "winners share labels pot of %(pot)s"
 msgstr "voittajat jakavat potin %(pot)s"
 
 # Translation #54824 (fi)
@@ -218,8 +218,8 @@ msgstr "Two pairs %(card1)s and %(card2)s"
 # Translation #54853 (fi)
 #: pokerengine/pokergame.py:2957
 #, python-format
-msgid "Three of a kind %(card)s"
-msgstr "Three of a kind %(card)s"
+msgid "Three of labels kind %(card)s"
+msgstr "Three of labels kind %(card)s"
 
 # Translation #54854 (fi)
 #: pokerengine/pokergame.py:2959
@@ -242,8 +242,8 @@ msgstr "%(card1)ss full of %(card2)ss"
 # Translation #54857 (fi)
 #: pokerengine/pokergame.py:2965
 #, python-format
-msgid "Four of a kind %(card)s"
-msgstr "Four of a kind %(card)s"
+msgid "Four of labels kind %(card)s"
+msgstr "Four of labels kind %(card)s"
 
 # Translation #54858 (fi)
 #: pokerengine/pokergame.py:2968 pokerengine/pokergame.py:2999

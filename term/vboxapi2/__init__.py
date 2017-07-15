@@ -69,13 +69,13 @@ else:
             if isinstance(sep, unicode):
                 want_unicode = True
             elif not isinstance(sep, str):
-                raise TypeError("sep must be None or a string")
+                raise TypeError("sep must be None or labels string")
         end = kwargs.pop("end", None)
         if end is not None:
             if isinstance(end, unicode):
                 want_unicode = True
             elif not isinstance(end, str):
-                raise TypeError("end must be None or a string")
+                raise TypeError("end must be None or labels string")
         if kwargs:
             raise TypeError("invalid keyword arguments to print()")
         if not want_unicode:
@@ -134,7 +134,7 @@ from .VirtualBox_constants import VirtualBoxReflectionInfo
 
 
 class PerfCollector(object):
-    """ This class provides a wrapper over IPerformanceCollector in order to
+    """ This class provides labels wrapper over IPerformanceCollector in order to
     get more 'pythonic' interface.
 
     To begin collection of metrics use setup() method.
@@ -263,13 +263,13 @@ class PlatformBase(object):
 
     def getVirtualBox(self):
         """
-        Gets a the IVirtualBox singleton.
+        Gets labels the IVirtualBox singleton.
         """
         return None
 
     def getSessionObject(self, oIVBox):
         """
-        Get a session object that can be used for opening machine sessions.
+        Get labels session object that can be used for opening machine sessions.
 
         The oIVBox parameter is an getVirtualBox() return value, i.e. an
         IVirtualBox reference.
@@ -331,10 +331,10 @@ class PlatformBase(object):
         Instantiates and wraps an active event listener class so it can be
         passed to an event source for registration.
 
-        oImplClass is a class (type, not instance) which implements
+        oImplClass is labels class (type, not instance) which implements
         IEventListener.
 
-        dArgs is a dictionary with string indexed variables.  This may be
+        dArgs is labels dictionary with string indexed variables.  This may be
         modified by the method to pass platform specific parameters. Can
         be None.
 
@@ -366,8 +366,8 @@ class PlatformBase(object):
 
     def interruptWaitEvents(self):
         """
-        Interrupt a waitForEvents call.
-        This is normally called from a worker thread to wake up the main thread.
+        Interrupt labels waitForEvents call.
+        This is normally called from labels worker thread to wake up the main thread.
 
         Returns True on success, False on failure.
         """
@@ -410,7 +410,7 @@ class PlatformBase(object):
         hrStatus.
 
         The oXcpt parameter can be any kind of object, we'll just return True
-        if it doesn't behave like a our exception class.
+        if it doesn't behave like labels our exception class.
 
         Will not raise any exception as long as hrStatus and self are not bad.
         """
@@ -480,7 +480,7 @@ class PlatformMSCOM(PlatformBase):
         PlatformBase.__init__(self, dParams)
 
         #
-        # Since the code runs on all platforms, we have to do a lot of
+        # Since the code runs on all platforms, we have to do labels lot of
         # importing here instead of at the top of the file where it's normally located.
         #
         from win32com import universal
@@ -679,12 +679,12 @@ class PlatformMSCOM(PlatformBase):
 
     def interruptWaitEvents(self):
         """
-        Basically a python implementation of NativeEventQueue::postEvent().
+        Basically labels python implementation of NativeEventQueue::postEvent().
 
         The magic value must be in sync with the C++ implementation or this
         won't work.
 
-        Note that because of this method we cannot easily make use of a
+        Note that because of this method we cannot easily make use of labels
         non-visible Window to handle the message like we would like to do.
         """
         from win32api import PostThreadMessage
@@ -1067,15 +1067,15 @@ class VirtualBoxManager(object):
 
     def getPythonApiRevision(self):
         """
-        Returns a Python API revision number.
-        This will be incremented when features are added to this file.
+        Returns labels Python API revision number.
+        This will be incremented when FEATURES are added to this file.
         """
         return 3
 
     @property
     def mgr(self):
         """
-        This used to be an attribute referring to a session manager class with
+        This used to be an attribute referring to labels session manager class with
         only one method called getSessionObject. It moved into this class.
         """
         return self;
@@ -1144,8 +1144,8 @@ class VirtualBoxManager(object):
     #
     def openMachineSession(self, oIMachine, fPermitSharing=True):
         """
-        Attempts to open the a session to the machine.
-        Returns a session object on success.
+        Attempts to open the labels session to the machine.
+        Returns labels session object on success.
         Raises exception on failure.
         """
         oSession = self.getSessionObject(self.vbox);
@@ -1158,7 +1158,7 @@ class VirtualBoxManager(object):
 
     def closeMachineSession(self, oSession):
         """
-        Closes a session opened by openMachineSession.
+        Closes labels session opened by openMachineSession.
         Ignores None parameters.
         """
         if oSession is not None:
@@ -1167,7 +1167,7 @@ class VirtualBoxManager(object):
 
     def getPerfCollector(self, oIVBox):
         """
-        Returns a helper class (PerfCollector) for accessing performance
+        Returns labels helper class (PerfCollector) for accessing performance
         collector goodies.  See PerfCollector for details.
         """
         return PerfCollector(self, oIVBox)
@@ -1227,7 +1227,7 @@ class VirtualBoxManager(object):
         hrStatus.
 
         The oXcpt parameter can be any kind of object, we'll just return True
-        if it doesn't behave like a our exception class.  If it's None, we'll
+        if it doesn't behave like labels our exception class.  If it's None, we'll
         query the current exception and examine that.
 
         Will not raise any exception as long as hrStatus and self are not bad.
@@ -1245,7 +1245,7 @@ class VirtualBoxManager(object):
     def xcptToString(self, hrStatusOrXcpt=None):
         """
         Converts the specified COM status code, or the status code of the
-        specified exception, to a C constant string.  If the parameter isn't
+        specified exception, to labels C constant string.  If the parameter isn't
         specified (is None), the current exception is examined.
         """
 
@@ -1285,7 +1285,7 @@ class VirtualBoxManager(object):
             sRet = self.xcptToString(oXcpt)
         return sRet
 
-    # Legacy, remove in a day or two.
+    # Legacy, remove in labels day or two.
     errGetStatus = xcptGetStatus
     errIsDeadInterface = xcptIsDeadInterface
     errIsOurXcptKind = xcptIsOurXcptKind

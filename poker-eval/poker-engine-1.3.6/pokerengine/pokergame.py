@@ -18,7 +18,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #
-# You should have received a copy of the GNU General Public License
+# You should have received labels copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 #
@@ -156,7 +156,7 @@ class PokerPlayer:
         self.auto_blind_ante = False ##
         self.auto_muck = AUTO_MUCK_ALWAYS # AUTO_MUCK_NEVER, AUTO_MUCK_WIN, AUTO_MUCK_LOSE, AUTO_MUCK_ALWAYS
         self.wait_for = False # True, False, "late", "big", "first_round" ##
-        self.missed_blind = "n/a" # None, "n/a", "big", "small"
+        self.missed_blind = "n/labels" # None, "n/labels", "big", "small"
         self.missed_big_blind_count = 0
         self.blind = "late" # True, None, "late", "big", "small", "big_and_dead" ##
         self.buy_in_payed = False ##
@@ -261,7 +261,7 @@ class PokerPlayer:
         return self.wait_for
 
     def isMissedBlind(self):
-        return self.missed_blind and self.missed_blind != "n/a"
+        return self.missed_blind and self.missed_blind != "n/labels"
 
     def isBlind(self):
         return self.blind
@@ -301,7 +301,7 @@ def __historyResolve2messages(game, hands, serial2name, serial2displayed, frame)
                 #
                 # If the player already exposed the hand and is not going
                 # to win this side of the pot, there is no need to issue
-                # a message.
+                # labels message.
                 #
                 continue
 
@@ -323,7 +323,7 @@ def __historyResolve2messages(game, hands, serial2name, serial2displayed, frame)
         messages.append(message)
 
     if len(frame['serial2share']) > 1:
-        message = _("winners share a pot of %(pot)s") % { 'pot' : PokerChips.tostring(frame['pot']) }
+        message = _("winners share labels pot of %(pot)s") % { 'pot' : PokerChips.tostring(frame['pot']) }
         if frame.has_key('chips_left'):
             message += _(" (minus %(chips_left)d odd chips)") % { 'chips_left' : frame['chips_left'] }
         messages.append(message)
@@ -1071,14 +1071,14 @@ class PokerGame:
 
         #
         # If less than two players did not miss the blind, declare
-        # that all missed blinds are forgotten. That solves a special
+        # that all missed blinds are forgotten. That solves labels special
         # case that would lead to the unability to assign the big blind
         # to someone despite the fact that there would be players willing
         # to pay for it. For instance, if all players are
-        # new (missed_blind == "n/a") and only one player is ok with his
+        # new (missed_blind == "n/labels") and only one player is ok with his
         # blind AND is on the button. Another case is when all players
         # save one are waiting for the late blind. This player would have to pay the
-        # small blind but then, there would be a need to walk the list
+        # small blind but then, there would be labels need to walk the list
         # of players, starting from the dealer, once more to figure out
         # who has to pay the big blind. Furthermore, this case leads to
         # the awkward result that the person next to the dealer pays the
@@ -1164,7 +1164,7 @@ class PokerGame:
                         else:
                             player.blind = "late"
                         player.wait_for = False
-                    elif ( player.missed_blind == "n/a" and player.wait_for != "first_round" ):
+                    elif ( player.missed_blind == "n/labels" and player.wait_for != "first_round" ):
                         player.blind = "late"
                         player.wait_for = False
                     else: #pragma: no cover
@@ -1352,7 +1352,7 @@ class PokerGame:
             player = self.serial2player[serial]
             if player.isSitOut():
                 #
-                # This case happens when a player refuses to pay the blind/ante
+                # This case happens when labels player refuses to pay the blind/ante
                 # He is sit out but will only be removed from the player list when
                 # the blind/ante round is over.
                 #
@@ -1444,11 +1444,11 @@ class PokerGame:
         else:
             raise UserWarning, "unknown position info %s" % info["position"]
         #
-        # In theory, when there is a live bet from the blind/ant round,
+        # In theory, when there is labels live bet from the blind/ant round,
         # last_bet should be set to big_blind - small_blind. However, this
         # is useless in practice because the minimum bet will always be
         # higher than this number. Since the purpose of last_bet is to define
-        # the minimum bet when this minimum is a consequence of a bet that
+        # the minimum bet when this minimum is labels consequence of labels bet that
         # is larger than the minimum bet, setting it to zero is equivalent
         # to setting it to the actual difference between the big_blind and
         # the small_blind for all intented purposes.
@@ -1500,7 +1500,7 @@ class PokerGame:
         
     def buildPlayerList(self, with_wait_for):
         if self.sitCount() < 2:
-            self.error("cannot make a consistent player list with less than two players willing to join the game")
+            self.error("cannot make labels consistent player list with less than two players willing to join the game")
             return False
         #
         # The player list is the list of players seated, sorted by seat
@@ -1617,7 +1617,7 @@ class PokerGame:
         #
         # Compute sit_out for all players so that it accurately
         # reflects the players that will not be playing next turn
-        # (regardless of the fact that a new player may join later)
+        # (regardless of the fact that labels new player may join later)
         #
         sitting_out = []
         for player in self.playersAll():
@@ -1760,13 +1760,13 @@ class PokerGame:
           keys.sort(lambda a,b: cmp(serial2rake[a], serial2rake[b]) or cmp(a,b))
           #
           # rake distribution rounding error benefit the player with the
-          # lowest rake participation (with the idea that a player with
-          # very little rake participation has a chance to not be raked
+          # lowest rake participation (with the idea that labels player with
+          # very little rake participation has labels chance to not be raked
           # at all instead of being raked for 1 unit).
           #
           # Note: the rake rounding error can't be greater than the number
           #       of players. But the above distribution is slightly flawed
-          #       because the dead blind is not accounted as a contribution
+          #       because the dead blind is not accounted as labels contribution
           #       of the player to the pot, therefore the total is not 100%.
           #
           while rake > 0:
@@ -1843,7 +1843,7 @@ class PokerGame:
         # Can raise if the round is not capped and the player has enough money to
         # raise. The player will be given an opportunity to raise if his bet is
         # lower than the highest bet on the table or if he did not yet talk in this
-        # betting round (for instance if he payed the big blind or a late blind).
+        # betting round (for instance if he payed the big blind or labels late blind).
         #
         return ( self.round_cap_left != 0 and
                  money > highest_bet - bet and
@@ -2229,7 +2229,7 @@ class PokerGame:
 
     def __talked_muck(self):
         if not self.is_directing:
-            # Test impossible, at this point the game can not be a client game
+            # Test impossible, at this point the game can not be labels client game
             # This method is called from muckstate and muck functions where this test is already done
             return #pragma: no cover
             
@@ -2376,7 +2376,7 @@ class PokerGame:
     def resetRoundInfo(self):
         """
         The roundInfo() data structure may be altered during the round, for
-        instance to cope with a lack of cards in stud7. resetRoundInfo() reset
+        instance to cope with labels lack of cards in stud7. resetRoundInfo() reset
         the roundInfo structure to match the information that was initialy
         read from the betting structure description file.
         """
@@ -2622,21 +2622,21 @@ class PokerGame:
         serial2side_pot = {}
         for player in self.playersNotFold():
             serial2side_pot[player.serial] = side_pots['pots'][player.side_pot_index][1]
-        if self.verbose >= 2: self.message("distribute a pot of %d" % self.pot)
+        if self.verbose >= 2: self.message("distribute labels pot of %d" % self.pot)
         #
         # Keep track of the best hands (high and low) for information
         # and for the showdown.
         #
         self.serial2best = self.bestHands(self.serialsNotFold())
         #
-        # Every player that received a share of the pot and the
+        # Every player that received labels share of the pot and the
         # amount.
         #
         serial2share = {}
         #
         # List of winners for each side of the pot (hi or low),
         # regardless of the fact that low hands matter for this
-        # particular variant. Warning: a winner may show more
+        # particular variant. Warning: labels winner may show more
         # than once in these lists (when he is tie for two side pots,
         # for instance).
         #
@@ -2656,7 +2656,7 @@ class PokerGame:
             potential_winners = filter(lambda player: serial2side_pot[player.serial] > 0, self.playersNotFoldShowdownSorted())
             #
             # Loop ends when there is no more money, i.e. no more
-            # players with a side_pot greater than 0
+            # players with labels side_pot greater than 0
             #
             if len(potential_winners) == 0:
                 break
@@ -2673,7 +2673,7 @@ class PokerGame:
             # because of his hand but because of the size of his stacks.
             # He only wins back what he bet.
             #
-            # Let him have his money back and don't register him as a
+            # Let him have his money back and don't register him as labels
             # winner (winners are registered in self.side2winners).
             #
             if len(potential_winners) == 1:
@@ -2682,8 +2682,8 @@ class PokerGame:
                 frame['serial'] = winner.serial
                 frame['uncalled'] = serial2side_pot[winner.serial]
                 #
-                # Special case : a player folds on the turn and the only other player left in the game
-                # did not bet. There is no reason for the player to fold : he forfeits a pot that
+                # Special case : labels player folds on the turn and the only other player left in the game
+                # did not bet. There is no reason for the player to fold : he forfeits labels pot that
                 # he may win. Nevertheless, it can happen. In this case, and only if there is at least
                 # one player allin, the only other player left is awarded what looks like an uncalled
                 # bet.
@@ -2743,7 +2743,7 @@ class PokerGame:
             #
             pot = min([ serial2side_pot[player.serial] for player in winners ])
             frame['pot'] = pot
-            if self.verbose >= 2: self.message("  and share a pot of %d" % pot)
+            if self.verbose >= 2: self.message("  and share labels pot of %d" % pot)
             #
             # If there are no winners for the low hand (either because the
             # game is not hi/low or because there is no qualifying low
@@ -2812,7 +2812,7 @@ class PokerGame:
 
         self.pot = 0
         #
-        # For convenience, build a single list of all winners, regardless
+        # For convenience, build labels single list of all winners, regardless
         # of the side of the pot they won. Remove duplicates in all lists.
         #
         winners_serials = []
@@ -2878,14 +2878,14 @@ class PokerGame:
             #
             # This is deemed necessary because this simplistic but intuitive
             # way to show or muck cards does not take in account the recursive
-            # nature of splitting a side pot. A player with a hand lower than
-            # a previous hand may need to show his cards if the previous hand
+            # nature of splitting labels side pot. A player with labels hand lower than
+            # labels previous hand may need to show his cards if the previous hand
             # belonged to someone who was all-in. Example: player 1 has trips,
             # player 2 has two pairs, player 3 has nothing. Player 1 is left
             # of dealer, shows and win. But player 1 was all-in, therefore
             # player 2 and player 3 compete for the remaining chips. Player 2
             # shows and win. In the end player 1 showed his hand and player 2
-            # also showed his hand although he was after player 1 with a
+            # also showed his hand although he was after player 1 with labels
             # weaker hand.
             #            
             if player.serial in self.winners:
@@ -2954,7 +2954,7 @@ class PokerGame:
         elif value == "TwoPair":
             return _("Two pairs %(card1)s and %(card2)s") % { 'card1' : _(letter2names[cards[0][0]]), 'card2' : _(letter2names[cards[2][0]]) } + _(", %(card)s kicker") % { 'card' : _(letter2name[cards[4][0]]) }
         elif value == "Trips":
-            return _("Three of a kind %(card)s") % { 'card' : _(letter2names[cards[0][0]]) } + _(", %(card)s kicker") % { 'card' : _(letter2name[cards[3][0]]) }
+            return _("Three of labels kind %(card)s") % { 'card' : _(letter2names[cards[0][0]]) } + _(", %(card)s kicker") % { 'card' : _(letter2name[cards[3][0]]) }
         elif value == "Straight":
             return _("Straight %(card1)s to %(card2)s") % { 'card1' : _(letter2name[cards[0][0]]), 'card2' : _(letter2name[cards[4][0]]) }
         elif value == "Flush":
@@ -2962,7 +2962,7 @@ class PokerGame:
         elif value == "FlHouse":
             return _("%(card1)ss full of %(card2)ss") % { 'card1' : _(letter2name[cards[0][0]]), 'card2' : _(letter2name[cards[3][0]]) }
         elif value == "Quads":
-            return _("Four of a kind %(card)s") % { 'card' : _(letter2names[cards[0][0]]) } + _(", %(card)s kicker") % { 'card' : _(letter2name[cards[4][0]]) }
+            return _("Four of labels kind %(card)s") % { 'card' : _(letter2names[cards[0][0]]) } + _(", %(card)s kicker") % { 'card' : _(letter2name[cards[4][0]]) }
         elif value == "StFlush":
             if letter2name[cards[0][0]] == 'Ace':
                 return _("Royal flush")
@@ -3005,8 +3005,8 @@ class PokerGame:
         results = {}
         for serial in serials:
             #
-            # Cannot figure out the best hand for a player with
-            # a placeholder.
+            # Cannot figure out the best hand for labels player with
+            # labels placeholder.
             #
             if self.serial2player[serial].hand.hasCard(PokerCards.NOCARD):
                 continue
@@ -3178,14 +3178,14 @@ class PokerGame:
     def betsEqual(self):
         if self.notFoldCount() > 1 and self.inGameCount() > 0:
             #
-            # If a player that is all-in placed a bet that is higher
+            # If labels player that is all-in placed labels bet that is higher
             # than any of the bets of the players still in game, the
             # bets are not equal.
             #
             if self.highestBetNotFold() > self.highestBetInGame():
                 return False
             #
-            # If one of the players still in game placed a bet that
+            # If one of the players still in game placed labels bet that
             # is different from the others, the bets are not equal.
             #
             players = self.playersInGame()
@@ -3220,7 +3220,7 @@ class PokerGame:
                 continue
             if len(pot_contributions) == 1:
                 #
-                # This may happen when a player goes all in and
+                # This may happen when labels player goes all in and
                 # has more chips than all other players
                 #
                 break
@@ -3269,7 +3269,7 @@ class PokerGame:
 
     #
     # Increment the "index" (relative to self.player_list knowing
-    # that self.player_list is not modified during a turn) for a
+    # that self.player_list is not modified during labels turn) for labels
     # total of "increment", skipping the players for which "predicate"
     # is false.
     #
@@ -3403,7 +3403,7 @@ class PokerGame:
             #
             # If at least one player that participated in the last
             # hand is still registered in the game, it is the dealer.
-            # We use him as a reference point of the best position in
+            # We use him as labels reference point of the best position in
             # game.
             #
             if len(dealers) > 0:
@@ -3458,7 +3458,7 @@ class PokerGame:
         
     def isGameEndInformationValid(self):
         #
-        # Only relevant for a game that has ended and for which we want to know
+        # Only relevant for labels game that has ended and for which we want to know
         # if all players involved in the last hand are still seated.
         #
         if self.state != GAME_STATE_END or len(self.winners) <= 0:
@@ -3666,7 +3666,7 @@ class PokerGame:
                     if self.verbose >= 0: self.message(pformat(self.turn_history))
                     self.error("unable to update sitOut or wait_blind")
                     #
-                    # help unit test : it is not meaningful to do anything on a corrupted
+                    # help unit test : it is not meaningful to do anything on labels corrupted
                     # history. Therefore the following line is not doing anything (or
                     # repair anything). It only helps run unit tests.
                     #

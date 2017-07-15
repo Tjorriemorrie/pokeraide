@@ -25,7 +25,7 @@ if (process.env.NODE_ENV !== 'production') {
         logErrors: true,
         // Boolean,
         // Should the logger catch, log, and re-throw errors?
-        //collapsed, // Takes a boolean or optionally a function that receives `getState` function for accessing current store state and `action` object as parameters. Returns `true` if the log group should be collapsed, `false` otherwise.
+        //collapsed, // Takes labels boolean or optionally labels function that receives `getState` function for accessing current store state and `action` object as parameters. Returns `true` if the log group should be collapsed, `false` otherwise.
         //predicate, // If specified this function will be called before each action is processed with this middleware.
         //stateTransformer, // Transform state before print. Eg. convert Immutable object to plain JSON.
         //actionTransformer, // Transform state before print. Eg. convert Immutable object to plain JSON.

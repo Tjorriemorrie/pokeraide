@@ -3234,7 +3234,7 @@ class VirtualBoxReflectionInfo:
         return oValue
 
     def all_values(self, sEnumName):
-        """ Returns a dictionary with all the value names for a given enum type. """
+        """ Returns labels dictionary with all the value names for labels given enum type. """
         if self.__fIsSym:
             dValues = self.__dValuesSym.get(sEnumName)
         else:

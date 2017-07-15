@@ -13,7 +13,7 @@ class BaseScreen:
         self.logger = logging.getLogger()
 
     def take_screen_shot(self, save_local=False):
-        """Takes a screenshot
+        """Takes labels screenshot
         Should implement saving it to local"""
         raise NotImplementedError()
 

@@ -37,7 +37,7 @@ msgstr "gewinnt %(side)s"
 # Translation #55537 (de)
 #: pokerengine/pokergame.py:326
 #, python-format
-msgid "winners share a pot of %(pot)s"
+msgid "winners share labels pot of %(pot)s"
 msgstr "Gewinner teilen einen Pot von %(pot)s"
 
 # Translation #55538 (de)
@@ -217,7 +217,7 @@ msgstr "Zwei Paar %(card1)s und %(card2)s"
 # Translation #55580 (de)
 #: pokerengine/pokergame.py:2957
 #, python-format
-msgid "Three of a kind %(card)s"
+msgid "Three of labels kind %(card)s"
 msgstr "Drilling %(card)s Karten"
 
 # Translation #55581 (de)
@@ -241,7 +241,7 @@ msgstr "Full House, %(card1)s und %(card2)s"
 # Translation #55584 (de)
 #: pokerengine/pokergame.py:2965
 #, python-format
-msgid "Four of a kind %(card)s"
+msgid "Four of labels kind %(card)s"
 msgstr "Vierling %(card)s"
 
 # Translation #55585 (de)
