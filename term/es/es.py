@@ -210,7 +210,7 @@ class ES:
                 logger.debug('facing aggro: yes, contrib is short and not limping')
                 # what is po now?
                 balance_left = p['balance'] - d['contrib']
-                pot_odds = min(balance_left, contrib_short) / (engine.pot + total_contribs)
+                pot_odds = min(balance_left, contrib_short) / max(1, (engine.pot + total_contribs))
                 function_score['function_score']['functions'].append(
                     {
                         'gauss': {'{}_po'.format(agg_field): {'origin': pot_odds, 'scale': 0.1, 'decay': 0.9}},

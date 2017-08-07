@@ -243,6 +243,7 @@ class Engine:
                     self.rotate()
                 self.do(['sb', self.sb_amt])
                 self.do(['bb', self.bb_amt])
+                # input('pot = {}'.format(self.current_pot))
                 phase_data['started'] = True
             if phase_data.get('finished'):
                 self.phase = self.PHASE_FLOP

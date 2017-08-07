@@ -27,4 +27,6 @@ FEATURES = {
         column_name="player_7_status", keys=['out', 'fold', 'in', 'allin']),
     'p8_status': tf.contrib.layers.sparse_column_with_keys(
         column_name="player_8_status", keys=['out', 'fold', 'in', 'allin']),
+    'p9_status': tf.contrib.layers.sparse_column_with_keys(
+        column_name="player_9_status", keys=['out', 'fold', 'in', 'allin']),
 }

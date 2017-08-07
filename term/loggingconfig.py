@@ -50,8 +50,19 @@ LOGGING_CONFIG = {
             'filename': 'log/scraper.log',
             'maxBytes': 2**20,
         },
+        'file_agents': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'formatter': 'default',
+            'filename': 'log/agents.log',
+            'maxBytes': 2**20,
+        },
     },
     'loggers': {
+        'self_play.agent': {
+            'handlers': ['file_agents', 'errors'],
+            'propagate': False,
+        },
         'scraper': {
             'handlers': ['file_scraper', 'errors'],
             'propagate': False,

@@ -53,7 +53,7 @@ class MonteCarlo:
         """create the tree. Add labels root; available action will add the first level of children"""
         self.traversed_ceiling = 1
         self.tree = Tree()
-        root = self.tree.create_node('root', identifier='000_root', data={'traversed': 0, 'ev': 0})
+        root = self.tree.create_node('root', identifier='100_root', data={'traversed': 0, 'ev': 0, 'stats': 1})
         # # logger.info('tree:\n{}'.format(self.tree.show()))
         self.convergence = {
             'deq': deque(maxlen=self.convergence_size),
@@ -130,14 +130,14 @@ class MonteCarlo:
             # logger.debug('leaves from tree: {}'.format(len(leaves)))
             # leaves.sort(key=lambda lp: len(lp) + sum(int(lpn.split('_')[0]) for lpn in lp), reverse=True)
             # # logger.debug('{} leaves are now sorted by formula'.format(len(leaves)))
-            # # logger.error(json.dumps(leaves, indent=4, default=str))
-            # input('>>')
-            leaves.sort(key=lambda lp: lp[-1][:3], reverse=True)
-            # logger.debug('{} leaves are now sorted by rank'.format(len(leaves)))
-            # # logger.debug('{}'.format(json.dumps(leaves[:3], indent=4, default=str)))
+            # logger.debug('{}'.format(json.dumps(leaves[:3], indent=4, default=str)))
             leaves.sort(key=len)
             # logger.debug('{} leaves are now sorted by length'.format(len(leaves)))
-            # # logger.debug('{}'.format(json.dumps(leaves[:3], indent=4, default=str)))
+            # logger.debug('{}'.format(json.dumps(leaves[:3], indent=4, default=str)))
+            leaves.sort(key=lambda lp: int(lp[-1][:3]), reverse=True)
+            # logger.debug('{} leaves are now sorted by rank'.format(len(leaves)))
+            # logger.error(json.dumps(leaves, indent=4, default=str))
+            # input('>>')
             for leaf in leaves:
                 self.run_item(leaf)
                 # self.show_best_action()
@@ -436,7 +436,7 @@ class MonteCarlo:
 
         node.data.update({
             'ev': n_ev,
-            'traversed': n_traversed
+            'traversed': n_traversed,
         })
         # logger.info('now node has {} ev~{} after {}'.format(node.tag, round(n_ev, 3), n_traversed))
 
@@ -544,7 +544,7 @@ class MonteCarlo:
         action_nodes = []
         for a in actions:
             node_data = {
-                'stats': stats['actions'].get(a[0], 0.01),
+                'stats': stats['actions'].get(a[0], 0.001),
                 'action': a,
                 'phase': e.phase,
                 'seat': s,
@@ -661,10 +661,13 @@ class MonteCarlo:
         non_fold_equity = 1 - stats['actions'].get('fold', 0)
         # # logger.debug('total stats equity = {} and non_fold_equity = {}'.format(total_stats, non_fold_equity))
         for action_node in action_nodes:
-            identifier = '{:03d}_{}'.format(int(action_node['stats'] * 100), uuid.uuid4())
-            node_tag = '{}_{}_{}'.format(action_node['action'], s, e.phase)
             if action_node['action'] != 'fold':
                 action_node['stats'] = max(0.01, action_node['stats'] / total_stats * non_fold_equity)
+            min_stats = min([int(parent.identifier[:3]), action_node['stats'] * 100])
+            # logger.error('min stats {} from parent {} and action node {}'.format(
+            #     min_stats, parent.identifier[:3], action_node['stats']))
+            identifier = '{:03d}_{}'.format(int(min_stats), uuid.uuid4())
+            node_tag = '{}_{}_{}'.format(action_node['action'], s, e.phase)
             self.tree.create_node(identifier=identifier, tag=node_tag, parent=parent.identifier, data=action_node)
             # logger.debug('new {} for {} with data {}'.format(node_tag, s, action_node))
         # logger.info('{} node actions added'.format(len(action_nodes)))
