@@ -1,9 +1,10 @@
 from collections import Counter
 import datetime
 import json
+import time
 import logging
 from elasticsearch_dsl.connections import connections
-from elasticsearch_dsl import Index, DocType, String, Date, Integer, Float, Boolean, Q, A
+from elasticsearch_dsl import Index, DocType, String, Date, Integer, Float, Boolean, Q, A, TermsFacet
 from operator import pos
 from sortedcontainers import SortedDict
 
@@ -394,3 +395,30 @@ class ES:
                 })
                 logger.info('saving doc: {}'.format(json.dumps(doc, indent=3, default=str)))
                 GameAction(**doc).save()
+
+    @classmethod
+    def most_frequent_players(cls):
+        logger.info('getting most frequent players')
+        sea = GameAction.search()
+        players_terms = A('terms', field='player')
+        sea.aggs.bucket('players', players_terms)
+        sea = sea[:0]
+        res = sea.execute()
+        # print(repr(res.aggregations['players']['buckets']))
+        for item in res.aggregations['players']['buckets']:
+            print('{}: {}'.format(item['key'], item['doc_count']))
+
+    @classmethod
+    def delete_player(cls, player_name):
+        logger.info('delete player docs')
+        q = Q('bool', must=Q('match', player=player_name))
+        sea = GameAction.search()
+        sea = sea.query(q)
+
+        res = sea.execute()
+        print(res.hits.total)
+        time.sleep(3)
+
+        for hit in sea.scan():
+            print(hit['player'], hit._id)
+            hit.delete()

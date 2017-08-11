@@ -1,6 +1,7 @@
 import click
 import cProfile
 import logging.config
+from es.es import ES
 
 from loggingconfig import LOGGING_CONFIG
 
@@ -85,6 +86,15 @@ def self_play_q():
     main()
 cli.add_command(self_play_q)
 
+
+@click.command()
+@click.option('--rm')
+def es(rm):
+    if rm:
+        ES.delete_player(rm)
+    else:
+        ES.most_frequent_players()
+cli.add_command(es)
 
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)

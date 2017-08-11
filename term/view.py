@@ -1,6 +1,7 @@
 from colorama import Fore, Back, Style
 from operator import itemgetter
 from os import system
+import numpy as np
 
 from es.es import ES
 from pe.pe import PE
@@ -69,11 +70,17 @@ class View:
         if self.engine.data[self.site.HERO]['status'] == 'in':
             print(Style.NORMAL + Fore.WHITE + 'Actions:')
 
+            # if self.mc.rolling_40:
+            #     roc = sum(self.mc.rolling_10) / sum(self.mc.rolling_40)
+            #     print(Style.NORMAL + Fore.WHITE + 'ROC: {:.0f}'.format(roc * 100))
+
             actions = [(c.data['action'], c.data['ev'], c.data['traversed'])
                        for c in self.mc.tree.children(self.mc.tree.root)]
             actions.sort(key=itemgetter(1), reverse=True)
+            evs = np.array([i[1] for i in actions])
             for action in actions:
-                a = '{:=+6d}'.format(int((1000 * action[1]) // self.engine.bb_amt))
+                a = '{:=+.1f}'.format((action[1] - np.mean(evs)) / np.std(evs))
+                # a = '{:=+6d}'.format(int((1000 * action[1]) // self.engine.bb_amt))
                 a += '{:5d} '.format(action[2])
                 a += '{}'.format(action[0])
                 print(Style.NORMAL + Fore.WHITE + a)

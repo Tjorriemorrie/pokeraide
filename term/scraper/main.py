@@ -240,10 +240,10 @@ class Scraper(View):
             timeout = 0.1
 
         if 'in' not in self.engine.data[self.site.HERO]['status']:
-            time.sleep(0.33)
+            time.sleep(0.2)
         else:
             try:
-                self.mc.run(2)
+                self.mc.run(timeout)
             except EngineError as e:
                 logger.error(e)
                 if self.debug:
@@ -257,7 +257,7 @@ class Scraper(View):
         actioned.
         First detect if the phase haven't moved on by checking board cards
         Secondly detect if current player isn't still thinking"""
-        self.run_mc(0.6)
+        self.run_mc(0.2)
 
         # todo check if gg in expected
         # todo then scan for foe pockets and exit
@@ -275,10 +275,10 @@ class Scraper(View):
             while self.engine.phase != self.engine.BOARD_MAP[len(self.engine.board)]:
                 # if second last person folded, or others allin
                 if self.engine.phase in [self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG]:
-                    logger.info('exiting board phase as engine is now in {}'.format(self.engine.phase))
+                    logger.warn('exiting board phase as engine is now in {}'.format(self.engine.phase))
                     return
                 self.check_player_action()
-                self.run_mc(0.6)
+                self.run_mc(0.3)
                 logger.debug('board moved: engine phase: {}'.format(self.engine.phase))
                 logger.debug('board moved: board map: {}'.format(self.engine.BOARD_MAP[len(self.engine.board)]))
             self.board_moved = False
@@ -289,7 +289,7 @@ class Scraper(View):
         # an allin would end here
         if self.engine.phase == self.engine.PHASE_SHOWDOWN:
             logger.debug('Game in phase showdown, not checking players')
-            time.sleep(1)
+            time.sleep(0.8)
             return
 
         # as long as someone else is thinking, run analysis
@@ -304,13 +304,20 @@ class Scraper(View):
             # if player is still thinking, then so can we
             if current_s == self.engine.q[0][0]:
                 logger.debug('player to act {} is still thinking, so can we...'.format(current_s))
-                self.run_mc(2)
+                # longer thinking time for hero
+                if current_s == self.site.HERO:
+                    self.run_mc(2)
+                else:
+                    self.run_mc(1)
 
             # player (in engine) to act is not the one thinking on screen
             # whilst it is not the expected player to act use the same current img to catch up
             else:
                 while current_s != self.engine.q[0][0]:
                     logger.debug('taking action for {} as he is not thinking on screen'.format(self.engine.q[0][0]))
+                    if self.engine.phase in [self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG]:
+                        logger.warn('exiting board phase as engine is now in {}'.format(self.engine.phase))
+                        return
                     try:
                         self.check_player_action()
                     except BalancesError as e:
@@ -336,8 +343,8 @@ class Scraper(View):
         logger.info('expecting one of {} during {}'.format(self.expected, phase))
 
         if 'fold' not in self.expected:
-            logger.warn('End of game should not be here: {}'.format(self.expected))
-            return
+            logger.error('fold is not in {}'.format(self.expected))
+            raise Exception('End of game should not be here')
 
         # has pocket
         pocket = self.check_player_pocket(s)

@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/jaco/code/pokeraide/term/self_play/agent/dqn_agent_1/model"
+all_model_checkpoint_paths: "/Users/jaco/code/pokeraide/term/self_play/agent/dqn_agent_1/model"

@@ -30,7 +30,7 @@ LOGGING_CONFIG = {
             'maxBytes': 2**20,
         },
         'file_back': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.handlers.RotatingFileHandler',
             'formatter': 'default',
             'filename': 'log/back.log',

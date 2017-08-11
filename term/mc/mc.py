@@ -21,6 +21,10 @@ logger = logging.getLogger(__name__)
 class MonteCarlo:
 
     def __init__(self, engine=None, hero=None):
+        # self.last_ev = 0
+        # self.rolling_10 = deque(maxlen=10)
+        # self.rolling_40 = deque(maxlen=40)
+
         if not engine:
             # logger.info('engine not given, loading from file...')
             self.engine_checksum = None
@@ -122,6 +126,12 @@ class MonteCarlo:
         Handling close action approximations:
         """
         # logger.info('Monte Carlo started')
+
+        # cannot run if engine in showdown or gg
+        if self.engine.phase in [self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG]:
+            logger.warn('cannot run mc with no actions')
+            return
+
         self.traversed_focus = 0
         time_start = time.time()
         while self.traversed_focus < self.traversed_ceiling and time.time() - time_start < duration:
@@ -380,9 +390,18 @@ class MonteCarlo:
         Traversed will stay the traversed_focus level for leaves, but for parent nodes
         the traversed will be the number of leaves reached from that node.
         """
+        is_hero = node.data.get('seat') == self.hero
+        # logger.debug('is hero? {}'.format(is_hero))
+
         # it will traverse back up to the root
         # root can be skipped
         if node.is_root():
+            # input('hero {} node data {}'.format(self.hero, node.data.get('seat')))
+            # if is_hero:
+            #     self.rolling_10.append(abs(self.last_ev))
+            #     self.rolling_40.append(abs(self.last_ev))
+            #     logger.debug('Added {} ev to collection'.format(self.last_ev))
+            #     input('Added {} ev to collection'.format(self.last_ev))
             # logger.debug('reached the root')
             return
 
@@ -395,9 +414,6 @@ class MonteCarlo:
         depth = self.tree.depth(node)
         # logger.info('updating node {} at depth {}'.format(node.tag, depth))
         # logger.info('node has {} before update'.format(node.data))
-
-        is_hero = node.data['seat'] == self.hero
-        # logger.debug('is hero? {}'.format(is_hero))
 
         if not len(node.fpointer):
             # logger.error('node {} with {} as no children...'.format(node.tag, node.data))
@@ -434,11 +450,13 @@ class MonteCarlo:
             n_traversed += dat['traversed']
             # logger.debug('added {} traversed: now have {} so far'.format(dat['traversed'], n_traversed))
 
+        self.last_ev = node.data['ev'] - n_ev
         node.data.update({
             'ev': n_ev,
             'traversed': n_traversed,
         })
         # logger.info('now node has {} ev~{} after {}'.format(node.tag, round(n_ev, 3), n_traversed))
+
 
         if not node.data['traversed']:
             raise Exception('node cannot be untraversed')
