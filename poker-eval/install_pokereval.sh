@@ -3,6 +3,7 @@ apt-get install git make gcc python-dev wget -y
 
 cd /tmp
 wget http://download.gna.org/pokersource/sources/poker-eval-138.0.tar.gz
+# http://http.debian.net/debian/pool/main/p/poker-eval/poker-eval_138.0.orig.tar.gz
 tar -xvf poker-eval-138.0.tar.gz
 cd poker-eval-138.0
 ./configure

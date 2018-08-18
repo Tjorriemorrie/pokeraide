@@ -28,7 +28,7 @@ class BaseSite:
         self.load_coordinates()
         self.load_cards_map()
 
-        self.ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'labels']
+        self.ranks = list(range(2, 10)) + ['t', 'j', 'q', 'k', 'a']
         self.suits = ['s', 'd', 'c', 'h']
         self.cards_names = ['{}{}'.format(r, s) for r, s in product(self.ranks, self.suits)]
 
@@ -85,7 +85,7 @@ class BaseSite:
 
     def mse_from_counts(self, tpl, comp):
         """Quickly matches two images. Useful if the exact
-        positioning is labels bit off."""
+        positioning is a bit off."""
         if tpl.shape != comp.shape:
             logger.warn('template {} and comparison {} does not have the same shape!'.format(tpl.shape, comp.shape))
             if self.debug:
@@ -114,7 +114,7 @@ class BaseSite:
         return coeffs
 
     def match_template(self, img, template, threshold, multiple=False):
-        """Matches labels template
+        """Matches a template
         Converts it to grayscale
         Checks against provided threshold if matched.
         Return None when below threshold"""

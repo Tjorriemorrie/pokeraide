@@ -96,6 +96,7 @@ def es(rm):
         ES.most_frequent_players()
 cli.add_command(es)
 
+
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)
     cli(obj={})

@@ -369,7 +369,7 @@ class Engine:
             if d['status'] != 'allin':
                 actions.append('allin')
                 contribs = Counter([d['contrib'] for d in self.data.values()])
-                # if there is already labels contrib to the phase then
+                # if there is already a contrib to the phase then
                 # you can only call or raise
                 # also, that is only applicable as well during
                 #   preflop has blinds has been placed
@@ -388,7 +388,7 @@ class Engine:
         Take the action. First are general settings, like setting the hand, otherwise
         it is specific to the current player that is to act.
 
-        If an action indicates the end of labels phase, then set that phase finished attr. Also
+        If an action indicates the end of a phase, then set that phase finished attr. Also
         put all the contribs to the pot (since bets needs to be matched).
         Todo: move this to per pot contrib & matched
 

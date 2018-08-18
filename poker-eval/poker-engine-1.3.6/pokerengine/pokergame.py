@@ -156,7 +156,7 @@ class PokerPlayer:
         self.auto_blind_ante = False ##
         self.auto_muck = AUTO_MUCK_ALWAYS # AUTO_MUCK_NEVER, AUTO_MUCK_WIN, AUTO_MUCK_LOSE, AUTO_MUCK_ALWAYS
         self.wait_for = False # True, False, "late", "big", "first_round" ##
-        self.missed_blind = "n/labels" # None, "n/labels", "big", "small"
+        self.missed_blind = "n/a" # None, "n/a", "big", "small"
         self.missed_big_blind_count = 0
         self.blind = "late" # True, None, "late", "big", "small", "big_and_dead" ##
         self.buy_in_payed = False ##
@@ -261,7 +261,7 @@ class PokerPlayer:
         return self.wait_for
 
     def isMissedBlind(self):
-        return self.missed_blind and self.missed_blind != "n/labels"
+        return self.missed_blind and self.missed_blind != "n/a"
 
     def isBlind(self):
         return self.blind
@@ -301,7 +301,7 @@ def __historyResolve2messages(game, hands, serial2name, serial2displayed, frame)
                 #
                 # If the player already exposed the hand and is not going
                 # to win this side of the pot, there is no need to issue
-                # labels message.
+                # a message.
                 #
                 continue
 
@@ -323,7 +323,7 @@ def __historyResolve2messages(game, hands, serial2name, serial2displayed, frame)
         messages.append(message)
 
     if len(frame['serial2share']) > 1:
-        message = _("winners share labels pot of %(pot)s") % { 'pot' : PokerChips.tostring(frame['pot']) }
+        message = _("winners share a pot of %(pot)s") % { 'pot' : PokerChips.tostring(frame['pot']) }
         if frame.has_key('chips_left'):
             message += _(" (minus %(chips_left)d odd chips)") % { 'chips_left' : frame['chips_left'] }
         messages.append(message)
@@ -1071,14 +1071,14 @@ class PokerGame:
 
         #
         # If less than two players did not miss the blind, declare
-        # that all missed blinds are forgotten. That solves labels special
+        # that all missed blinds are forgotten. That solves a special
         # case that would lead to the unability to assign the big blind
         # to someone despite the fact that there would be players willing
         # to pay for it. For instance, if all players are
-        # new (missed_blind == "n/labels") and only one player is ok with his
+        # new (missed_blind == "n/a") and only one player is ok with his
         # blind AND is on the button. Another case is when all players
         # save one are waiting for the late blind. This player would have to pay the
-        # small blind but then, there would be labels need to walk the list
+        # small blind but then, there would be a need to walk the list
         # of players, starting from the dealer, once more to figure out
         # who has to pay the big blind. Furthermore, this case leads to
         # the awkward result that the person next to the dealer pays the
@@ -1164,7 +1164,7 @@ class PokerGame:
                         else:
                             player.blind = "late"
                         player.wait_for = False
-                    elif ( player.missed_blind == "n/labels" and player.wait_for != "first_round" ):
+                    elif ( player.missed_blind == "n/a" and player.wait_for != "first_round" ):
                         player.blind = "late"
                         player.wait_for = False
                     else: #pragma: no cover

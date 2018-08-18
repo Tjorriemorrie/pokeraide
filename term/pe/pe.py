@@ -18,7 +18,7 @@ class PE:
     @classmethod
     def hand_strength(cls, hand):
         """Used for calculating the hand strengths for ranking pockets"""
-        pockets = [list(hand), ['__', '__']]
+        pockets = [list(hand), ['__'] * 2]
         board = ['__'] * 5
         equities = req_equities(board, pockets)
         hand_strength = equities['eval'][0]['ev'] / 1000
