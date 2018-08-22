@@ -12,7 +12,9 @@ import time
 from engine.engine import Engine, EngineError
 from es.es import ES
 from mc.mc import MonteCarlo
+from scraper.errors import PlayerBalanceIsTextError, NoPotInBalancesError
 from scraper.sites.base import SiteException, NoDealerButtonError, PocketError, ThinkingPlayerError, BalancesError, BoardError
+from scraper.sites.coinpoker.site import CoinPoker
 from scraper.sites.pokerstars.site import PokerStars
 from scraper.sites.partypoker.site import PartyPoker
 from scraper.sites.zynga.site import Zynga
@@ -52,8 +54,10 @@ class Scraper(View):
             self.site = PartyPoker(seats, debug)
         elif site_name == 'zg':
             self.site = Zynga(seats, debug)
+        elif site_name == 'cp':
+            self.site = CoinPoker(seats, debug)
         else:
-            raise NotImplementedError('{} is not implemented'.format(site_info))
+            raise NotImplementedError('{} is not implemented'.format(site_name))
 
         self.img = None
 
@@ -61,7 +65,7 @@ class Scraper(View):
         self.players = {
             s: {
                 'name': 'joe',
-                'balance': 0,
+                'balance': 5000,
                 'status': 1,
             }
             for s in range(1, seats + 1)
@@ -80,13 +84,14 @@ class Scraper(View):
 
     def load_files(self):
         """Replays through images saved during debug run"""
-        self.files = []
+        files = []
         for entry in os.scandir(self.PATH_DEBUG):
             if not entry.is_file() or entry.name.startswith('.'):
                 logger.debug('skipping file {}'.format(entry.name))
                 continue
-            self.files.append(entry.path)
-        logger.info('loading {} files'.format(len(self.files)))
+            files.append(entry.path)
+        logger.info(f'loading {len(files)} files')
+        self.files = sorted(files)
 
     def take_screen(self):
         """Get screen image
@@ -97,7 +102,10 @@ class Scraper(View):
         while True:
             if not self.replay:
                 # 3840 x 2400 mac retina
-                img = ImageGrab.grab((1920, 600, 3840, 2400))
+                # pokerstars
+                # img = ImageGrab.grab((1920, 600, 3840, 2400))
+                # coinpoker
+                img = ImageGrab.grab((1760, 700, 3840, 2300))
                 if self.debug:
                     img_file = os.path.join(self.PATH_DEBUG, '{}.png'.format(datetime.datetime.utcnow()))
                     img.save(img_file)
@@ -120,7 +128,7 @@ class Scraper(View):
                     if not self.waiting_for_new_game:
                         if not self.drop_game_start:
                             self.drop_game_start = time.time()
-                            logger.warn('Drop game beginning...')
+                            logger.warning('Drop game beginning...')
                         elif time.time() - self.drop_game_start > 5:
                             self.waiting_for_new_game = True
                             self.button_moved = False
@@ -135,9 +143,7 @@ class Scraper(View):
                 try:
                     btn = self.site.parse_dealer(self.img)
                 except NoDealerButtonError as e:
-                    logger.error(e)
-                    # if self.debug:
-                    #     input('$ really no button?')
+                    logger.warning(e)
                     time.sleep(0.6)
                     continue
                 else:
@@ -151,10 +157,8 @@ class Scraper(View):
 
                 try:
                     self.check_board()
-                except BoardError as e:
-                    logger.error(e)
-                    if self.debug:
-                        input('$ what is this board error?')
+                except BoardError as exc:
+                    logger.exception('There should not be this board error')
                     continue
 
                 # DONE
@@ -189,7 +193,8 @@ class Scraper(View):
             self.engine.board = board
             self.board_moved = True
             if self.debug:
-                input('$ board really changed?')
+                logger.info('Did the board change?')
+                # input('$ board really changed?')
 
         logger.debug('board: {}'.format(self.engine.board))
 
@@ -217,9 +222,8 @@ class Scraper(View):
                 if self.button_moved:
                     logger.debug('button moved! we need to finish up what engine is')
                     self.finish_it()
-                    # break
                 elif self.engine.phase in [self.engine.PHASE_GG, self.engine.PHASE_SHOWDOWN]:
-                    logger.info('Game comleted but waiting for button move')
+                    logger.info('Game completed but waiting for button move')
                     time.sleep(0.3)
                     if self.debug:
                         input('$ check hands if lucky:')
@@ -296,14 +300,14 @@ class Scraper(View):
         logger.info('Checking parsing player...')
         try:
             current_s = self.site.parse_thinking_player(self.img)
-            logger.debug('Current thinking player is {}'.format(current_s))
+            logger.debug(f'Current thinking player is {current_s}')
         except ThinkingPlayerError as e:
             logger.info(e)
         else:
 
             # if player is still thinking, then so can we
             if current_s == self.engine.q[0][0]:
-                logger.debug('player to act {} is still thinking, so can we...'.format(current_s))
+                logger.debug(f'player to act {current_s} is still thinking, so can we...')
                 # longer thinking time for hero
                 if current_s == self.site.HERO:
                     self.run_mc(2)
@@ -314,14 +318,14 @@ class Scraper(View):
             # whilst it is not the expected player to act use the same current img to catch up
             else:
                 while current_s != self.engine.q[0][0]:
-                    logger.debug('taking action for {} as he is not thinking on screen'.format(self.engine.q[0][0]))
+                    logger.debug(f'taking action for {self.engine.q[0][0]} as he is not thinking on screen')
                     if self.engine.phase in [self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG]:
-                        logger.warn('exiting board phase as engine is now in {}'.format(self.engine.phase))
+                        logger.warning(f'exiting board phase as engine is now in {self.engine.phase}')
                         return
                     try:
                         self.check_player_action()
                     except BalancesError as e:
-                        logger.warn(e)
+                        logger.warning(e)
                         return
                     self.run_mc(0.1)
 
@@ -339,15 +343,15 @@ class Scraper(View):
         """
         s = self.engine.q[0][0]
         phase = self.engine.phase
-        logger.info('check player {} action'.format(s))
-        logger.info('expecting one of {} during {}'.format(self.expected, phase))
+        logger.info(f'check player {s} action')
+        logger.info(f'expecting one of {self.expected} during {phase}')
 
         if 'fold' not in self.expected:
             logger.error('fold is not in {}'.format(self.expected))
             raise Exception('End of game should not be here')
 
         # has pocket
-        pocket = self.check_player_pocket(s)
+        pocket = self.check_players_pockets(s)
         if not pocket:
             logger.debug('Player has folded')
             cmd = ['f']
@@ -449,24 +453,35 @@ class Scraper(View):
         logger.debug('get next actions')
         self.expected = self.engine.available_actions()
 
-    def check_player_pocket(self, s):
+    def check_players_pockets(self, filter_seat=None):
         """Check if player has back side of pocket, otherwise check what his cards are"""
+        pockets = {}
+        for i in range(self.site.seats):
+            s = i + 1
+            if filter_seat and filter_seat != s:
+                continue
 
-        # check for back side
-        if self.site.parse_pocket_back(self.img, s):
-            logger.info('Player {} has hole cards'.format(s))
-            return self.site.HOLE_CARDS
+            # check for back side
+            if self.site.parse_pocket_back(self.img, s):
+                logger.info(f'Player {s} has hole cards')
+                pockets[s] = self.site.HOLE_CARDS
+                continue
 
-        # check if showing cards
-        pocket = self.site.parse_pocket_cards(self.img, s)
-        if pocket:
-            self.engine.data[s]['hand'] = pocket
-            logger.info('Player {} is showing {}'.format(s, pocket))
-            self.print()
-            return pocket
+            # check if showing cards
+            pocket = self.site.parse_pocket_cards(self.img, s)
+            if pocket:
+                self.engine.data[s]['hand'] = pocket
+                logger.info(f'Player {s} is showing {pocket}')
+                self.print()
+                pockets[s] = pocket
+                continue
 
-        logger.info('Player has no cards')
-        return None
+            logger.info(f'Player {s} has no cards')
+
+        if filter_seat:
+            return filter_seat in pockets and pockets[filter_seat]
+
+        return pockets
 
     def check_player_balance(self, s):
         """Due to text appearing, double confirm empty or errors"""
@@ -479,48 +494,65 @@ class Scraper(View):
         return balances
 
     def start_new_game(self):
-        """Dealer button moved. Create new game.
-        Get players that are still IN (not necessary to check pockets. The balances will return 0
-            or empty if player left/out)
-        Get small blind and big blind.
+        """Dealer button moved: create new game!
+
+        Get players that are still IN: some sites have balances always available, but some are
+        blocked by text. Thus at least 2 pockets are required.
+
+        Get small blind and big blind and ante.
         Create new engine
         Create new MC
         Not waiting for a new game anymore.
         """
         # for joining table first time only
         if not self.btn:
-            logger.info('init button at {}'.format(self.btn_next))
+            logger.info(f'init button at {self.btn_next}')
             self.btn = self.btn_next
             return
 
         logger.info('button moved: creating new game')
         self.btn = self.btn_next
 
-        balances = self.check_balances()
-        if 'pot' not in balances:
-            logger.warn('New game did not really start')
+        # there must be pockets for a game to have started
+        pockets = self.check_players_pockets()
+        if len(pockets) < 2:
+            logger.debug(f'Game has not started as there are {len(pockets)} pockets right now')
             time.sleep(0.3)
             return
 
-        # self.check_names()
+        # pot and total are required for a game to have started
+        pot, total = self.site.parse_pot_and_total(self.img)
+        if not pot or not total:
+            logger.debug(f'Game has not started as there are no pot or total right now')
+            time.sleep(0.2)
+            return
+
+        # contribs are required for blinds!
         contribs = self.site.parse_contribs(self.img)
-        ante = self.check_ante(contribs)
+        if len(contribs) < 2:
+            logger.debug(f'Game has not started as there are {len(contribs)} contribs right now')
+            time.sleep(0.1)
+            return
+
+        # not doing any more checks, since if they have cards and there is a pot: game on!
+        # self.check_names()  # checked at flop to save time during start
+        balances = self.site.parse_balances(self.img)
+
+        vs_players = set(list(pockets.keys()) + list(contribs.keys()) + list(balances.keys()))
+        ante = self.check_ante(len(vs_players), pot)
         sb, bb = self.check_blinds(contribs)
 
-        self.pre_start(balances, contribs, ante)
+        self.pre_start(vs_players, balances, contribs, ante)
 
         logger.debug('creating engine...')
         self.engine = Engine(self.site.NAME, self.btn, self.players, sb, bb, ante)
         self.expected = self.engine.available_actions()
-        logger.debug('seat {} available actions: {}'.format(
-            self.engine.q[0][0],
-            self.expected
-        ))
+        logger.debug(f'seat {self.engine.q[0][0]} available actions: {self.expected}')
 
         logger.debug('creating MC...')
         self.mc = MonteCarlo(engine=self.engine, hero=self.site.HERO)
 
-        self.post_start()
+        self.post_start(pockets)
 
         logger.info('new game created!')
         self.waiting_for_new_game = False
@@ -534,80 +566,68 @@ class Scraper(View):
             self.players[s]['name'] = name
         logger.info('checked player names')
 
-    def check_balances(self):
-        """Check balances of players for new game. Balances of players without a balance
-        will not be returned, thus loop over seats and set status to out
-        Also check for ante and set amount
-        """
-        balances = self.site.parse_balances(self.img)
-        for s, balance in balances.items():
-            if s == 'pot':
-                continue
-            self.players[s]['balance'] = balance
-            # skip ante check for init
-            if hasattr(self, 'engine'):
-                balance_diff = self.players[s]['balance'] - balance
-                if balance_diff:
-                    logger.warn('player {} balance {} out by {}'.format(s, balance, balance_diff))
-        logger.info('Player balances retrieved')
-        return balances
-
-    def check_ante(self, contribs):
-        """Check ante from contrib total before gathering/matched"""
-        ante = 0
-        if 'total' in contribs:
-            vs = sum([p['balance'] > 0 for p in self.players.values()])
-            ante = contribs['total'] / vs
-            logger.debug('Ante {} from total {} and vs {}'.format(ante, contribs['total'], vs))
-            if not ante.is_integer():
-                logger.warn('Ante {} is not integer'.format(ante))
+    def check_ante(self, vs, pot):
+        """Check ante from contrib total before gathering/matched. Using player balances instead
+        of recently scraped balances."""
+        ante = pot / vs
+        logger.debug(f'Ante {ante} from current pot {pot} and vs {vs}')
+        if not ante.is_integer():
+            logger.warning(f'Ante {ante} is not integer')
         ante = int(round(ante))
-        logger.info('Ante: {}'.format(ante))
+        logger.info(f'Ante: {ante}')
         return ante
 
     def check_blinds(self, contribs):
-        """SB and BB from ante structure"""
-        for sb, bb in combinations(sorted(contribs.values()), 2):
-            if sb * 2 == bb:
-                logger.info('Blinds found: SB {} and BB {}'.format(sb, bb))
-                return sb, bb
-            logger.warn('Smallest SB {} is not 1:2 to BB {}'.format(sb, bb))
+        """SB and BB from ante structure. Since hero blocks the play, this should be always found."""
+        contribs_sorted = sorted([c for c in contribs.values() if c])
+        sb, bb, *_ = contribs_sorted
+        logger.info(f'Blinds found: SB {sb} and BB {bb}')
+        if sb * 2 != bb:
+            logger.warning('Smallest SB is not 1:2 to BB')
         return sb, bb
 
-    def pre_start(self, balances, contribs, ante):
+    def pre_start(self, vs_players, balances, contribs, ante):
         """Add contribs back to balances for when engine take action it will subtract it
             again from matched/contrib.
         The status of players can be set if they have any balance/contrib"""
         for s in range(1, self.site.seats + 1):
-            balance = balances.get(s, 0)
-            contrib = contribs.get(s, 0)
-            status = 1 if balance + contrib + ante > ante else 0
+            status = s in vs_players
             self.players[s]['status'] = status
-            if status:
-                if contrib:
-                    self.players[s]['balance'] += contrib
-                    logger.debug('player {} contrib {} added back to balance {}'.format(
-                        s, contrib, balance))
-                if ante:
-                    self.players[s]['balance'] += ante
-                    logger.debug('player {} ante {} added back to balance {}'.format(
-                        s, ante, balance))
+            if not status:
+                continue
+
+            # balance might not be scraped as it might be obscured by text
+            if s in balances:
+                balance = balances[s]
+                balance_diff = self.players[s]['balance'] - balance
+                if balance_diff:
+                    logger.warning(f'player {s} balance {balance} out by {balance_diff}')
+                self.players[s]['balance'] = balance
+
+            # if player is blind, then return money for engine to subtract on init. same for ante.
+            contrib = contribs.get(s, 0)
+            if contrib:
+                self.players[s]['balance'] += contrib
+                logger.debug(f'player {s} contrib {contrib} added back to balance')
+            if ante:
+                self.players[s]['balance'] += ante
+                logger.debug(f'player {s} ante {ante} added back to balance')
 
         logger.info('pre start done')
         if self.debug:
-            input('$ check balances/contribs/ante')
+            logger.info('Is all the balances/contribs/ante correct?')
 
-    def post_start(self):
+    def post_start(self, pockets):
         """Post start. Engine and MC has been created.
         Set hero hand immediately for analysis of EV"""
         hero = self.site.HERO
-        pocket = self.site.parse_pocket_cards(self.img, hero)
+        pocket = pockets.get(hero)
         if pocket:
             self.engine.data[hero]['hand'] = pocket
-            logger.info('Hero (p{}) hand set to {}'.format(hero, pocket))
-            self.print()
+            logger.info(f'Hero (p{hero}) hand set to {pocket}')
         else:
             logger.error('No hero pocket found!')
+        self.print()
 
     def finish_it(self):
         """Finish the game. Calculate the winner and winnings

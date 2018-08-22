@@ -87,9 +87,9 @@ class BaseSite:
         """Quickly matches two images. Useful if the exact
         positioning is a bit off."""
         if tpl.shape != comp.shape:
-            logger.warn('template {} and comparison {} does not have the same shape!'.format(tpl.shape, comp.shape))
+            logger.warning('template {} and comparison {} does not have the same shape!'.format(tpl.shape, comp.shape))
             if self.debug:
-                input('$ did you forget to copy over img?')
+                logger.debug('did you forget to crop img from the grayscale window.png?')
         tpl_cnts = Counter(tpl.flatten())
         comp_cnts = Counter(comp.flatten())
         diffs = [(cnt - comp_cnts[el]) ** 2 for el, cnt in tpl_cnts.items()]
@@ -116,10 +116,17 @@ class BaseSite:
     def match_template(self, img, template, threshold, multiple=False):
         """Matches a template
         Converts it to grayscale
+        Converts img to detect edges
         Checks against provided threshold if matched.
         Return None when below threshold"""
         template = template.convert('L')
-        res = cv2.matchTemplate(np.array(img), np.array(template), cv2.TM_CCOEFF_NORMED)
+        img = np.array(img)
+        template = np.array(template)
+        # img = cv2.Canny(img, 50, 200)
+        # template = cv2.Canny(template, 50, 200)
+        # cv2.imshow('image', img)
+        # cv2.waitKey(0)
+        res = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
         if not multiple:
             mml = cv2.minMaxLoc(res)
             logger.debug('Min Max Loc: {}'.format(mml))
@@ -134,9 +141,11 @@ class BaseSite:
 
     def generate_cards(self):
         """Generate cards for site"""
+        cols = 13
+        rows = 4
         card_shape = self.coords['card_shape']
-        cards_shape = (card_shape[0] * 13, card_shape[1] * 5)
-        logger.info('Generating cards on {} sheet'.format(cards_shape))
+        cards_shape = (card_shape[0] * cols, card_shape[1] * rows)
+        logger.info(f'Generating cards on {card_shape} sheet')
 
         img = Image.new('L', cards_shape)
         x = 0
@@ -147,23 +156,23 @@ class BaseSite:
         for rank in self.ranks:
             y = 0
             for suit in self.suits:
-                card_name = '{}{}'.format(rank, suit)
-                logger.debug('adding card {} at {}, {}'.format(card_name, x, y))
+                card_name = f'{rank}{suit}'
+                logger.debug(f'adding card {card_name} at {x}, {y}')
                 img.paste(self.img[card_name], (x, y))
-                cards_map['{},{}'.format(x, y)] = card_name
+                cards_map[f'{x},{y}'] = card_name
                 y += card_shape[1]
             x += card_shape[0]
 
         # add other
-        for b in ['board']:
-            x = 0
-            y = card_shape[1] * 4
-            for i in range(1, 6):
-                card_name = 'board_{}'.format(i)
-                logger.debug('adding card {} at {}, {}'.format(card_name, x, y))
-                img.paste(self.img[card_name], (x, y))
-                cards_map['{},{}'.format(x, y)] = card_name
-                x += card_shape[0]
+        # for b in ['board']:
+        #     x = 0
+        #     y = card_shape[1] * 4
+        #     for i in range(1, 6):
+        #         card_name = 'board_{}'.format(i)
+        #         logger.debug('adding card {} at {}, {}'.format(card_name, x, y))
+        #         img.paste(self.img[card_name], (x, y))
+        #         cards_map['{},{}'.format(x, y)] = card_name
+        #         x += card_shape[0]
 
         img.save(path.join(self.PWD, 'img', 'cards_map.png'))
 
@@ -206,9 +215,17 @@ class BaseSite:
             loc = self.match_template(img, tpl, threshold)
             if loc:
                 cards[card_name] = loc
-                logger.debug('Found card {} at {}'.format(card_name, loc))
-        logger.debug('Found {} cards'.format(len(cards)))
+                logger.debug(f'Found card {card_name} at {loc}')
+        logger.debug(f'Found {len(cards)} cards')
         return cards
+
+    def match_pocket(self, img, threshold):
+        """Parses img provided for the back side"""
+        logger.info('Matching back pocket in img')
+        tpl = self.img['pocket_back']
+        loc = self.match_template(img, tpl, threshold)
+        logger.debug(f'Found back card at {loc}')
+        return loc
 
 
 class SiteException(Exception):

@@ -1,10 +1,8 @@
-from colorama import Fore, Back, Style
 from operator import itemgetter
 from os import system
-import numpy as np
 
-from es.es import ES
-from pe.pe import PE
+import numpy as np
+from colorama import Fore, Style
 
 
 class View:

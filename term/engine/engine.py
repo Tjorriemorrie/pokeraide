@@ -51,10 +51,10 @@ class Engine:
     FILE = join(dirname(realpath(__file__)), 'engine')
 
     def __init__(self, site_name, button, players, sb, bb, ante=0, *args, **kwargs):
-        logger.info('Engine site_name: {}'.format(site_name))
-        logger.info('Engine button: {}'.format(button))
-        logger.info('Engine players: {}'.format(len(players)))
-        logger.info('Engine kwargs: {}'.format(kwargs))
+        logger.info(f'Engine site_name: {site_name}')
+        logger.info(f'Engine button: {button}')
+        logger.info(f'Engine players: {len(players)}')
+        logger.info(f'Engine kwargs: {kwargs}')
 
         self.site_name = site_name
         self.button = button

@@ -45,7 +45,7 @@ def scrape(ctx, site, seats, replay, observe, profile):
         for hdlr in logger.handlers:
             hdlr.setLevel(logging.INFO)
     from scraper.main import Scraper
-    scraper = Scraper(site, seats, debug=ctx.obj['debug'], replay=replay, observe=observe)
+    scraper = Scraper(site, seats, debug=debug, replay=replay, observe=observe)
     if profile:
         cProfile.runctx('scraper.run()', globals(), locals(), 'stats.prof')
     else:
