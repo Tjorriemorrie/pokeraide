@@ -16,13 +16,17 @@ class PE:
     SAMPLE_SIZE = 0.10
 
     @classmethod
-    def hand_strength(cls, hand):
+    def hand_strength(cls, hand, board=None, rivals=2):
         """Used for calculating the hand strengths for ranking pockets"""
-        pockets = [list(hand), ['__'] * 2]
-        board = ['__'] * 5
+        pockets = [list(hand)]
+        # rivals are total players including hero, so add only enemies
+        for _ in range(rivals - 1):
+            pockets.append(['__'] * 2)
+        if not board:
+            board = ['__'] * 5
         equities = req_equities(board, pockets)
         hand_strength = equities['eval'][0]['ev'] / 1000
-        logger.debug('pocket {} strength: {}'.format(hand, hand_strength))
+        logger.debug(f'pocket {hand} strength: {hand_strength}, board {board}, rivals {rivals}')
         return hand_strength
 
     @classmethod
@@ -153,7 +157,7 @@ class PE:
         equities = {s: e / total_equities for s, e in equities_filtered.items()}
         # logger.debug('equities normalized {} from total {}'.format(equities, total_equities))
 
-        duration = time.time() - time_start
+        # duration = time.time() - time_start
         # logger.info('calculated {}/s  [{} calcs in {}s]'.format(calcs // duration, calcs, duration))
         # logger.info('cache info: {}'.format(pokereval_2.cache_info()))
 

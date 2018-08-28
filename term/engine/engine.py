@@ -231,12 +231,10 @@ class Engine:
             if not phase_data.get('started'):
                 logger.debug('starting preflop')
                 for s, p in self.players.items():
-                    self.data[s]['hand'] = ['__', '__'] if bool(p.get('status')) else ['  ', '  ']
                     # subtract ante immediately (else scraper balance is wrong in preflop)
-                    if self.ante:
+                    if p['status'] and self.ante:
                         self.pot += self.ante
                         self.players[s]['balance'] -= self.ante
-                    logger.debug('Player {} ante {} for hand {}'.format(s, self.data[s]['contrib'], self.data[s]['hand']))
                 self.player_queue()
                 # for headsup the button posts SB
                 if self.vs == 2:
@@ -487,7 +485,7 @@ class Engine:
                 'pot_odds': pot_odds,
                 'rvl': self.rivals,
             })
-            d['hand'] = ['  ', '  ']
+            d['hand'] = ['  ', '  '] if d['hand'] == ['__', '__'] else d['hand']
             logger.debug('Did action fold')
             self.rotate()
 

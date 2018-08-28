@@ -120,34 +120,36 @@ class BaseSite:
         Checks against provided threshold if matched.
         Return None when below threshold"""
         template = template.convert('L')
-        img = np.array(img)
-        template = np.array(template)
-        # img = cv2.Canny(img, 50, 200)
-        # template = cv2.Canny(template, 50, 200)
-        # cv2.imshow('image', img)
-        # cv2.waitKey(0)
-        res = cv2.matchTemplate(img, template, cv2.TM_CCOEFF_NORMED)
+        if img.size[0] < template.size[0] or img.size[1] < template.size[1]:
+            logger.error('Template cannot be smaller than image provided')
+            return
+        res = cv2.matchTemplate(np.array(img), np.array(template), cv2.TM_CCOEFF_NORMED)
         if not multiple:
             mml = cv2.minMaxLoc(res)
-            logger.debug('Min Max Loc: {}'.format(mml))
+            logger.debug(f'Min Max Loc: {mml}')
+            if mml[0] == 1:
+                # todo fix mml
+                logger.error(f'mml {mml} is broken with minimum being max :(')
+                return False
             loc_found = mml[1] >= threshold
-            logger.info('template match found: {} @ {} [{:.2f} >= {:.2f}]'.format(loc_found, mml[-1], mml[1], threshold))
+            logger.info(f'template match found: {loc_found} @ {mml[-1]} [{mml[1]:.2f} >= {threshold:.2f}]')
             return loc_found and list(mml[-1])
         else:
             locs = np.where(res >= threshold)
             locs = [list(l) for l in zip(*locs[::-1])]
-            logger.info('template match found {:d} with threshold {:.2f}'.format(len(locs), threshold))
+            logger.info(f'template match found {len(locs):d} with threshold {threshold:.2f}')
             return list(map(list, locs))
 
     def generate_cards(self):
         """Generate cards for site"""
         cols = 13
-        rows = 4
-        card_shape = self.coords['card_shape']
-        cards_shape = (card_shape[0] * cols, card_shape[1] * rows)
+        rows = 5
+        card_shape = self.coords['board']['card_shape']
+        cards_shape = (card_shape[0] * cols, card_shape[1] * rows + rows)
         logger.info(f'Generating cards on {card_shape} sheet')
 
-        img = Image.new('L', cards_shape)
+        # make black for black border as well
+        img = Image.new('L', cards_shape, 255)
         x = 0
         y = 0
         cards_map = {}
@@ -160,21 +162,21 @@ class BaseSite:
                 logger.debug(f'adding card {card_name} at {x}, {y}')
                 img.paste(self.img[card_name], (x, y))
                 cards_map[f'{x},{y}'] = card_name
-                y += card_shape[1]
+                y += card_shape[1] + 1
             x += card_shape[0]
 
         # add other
-        # for b in ['board']:
-        #     x = 0
-        #     y = card_shape[1] * 4
-        #     for i in range(1, 6):
-        #         card_name = 'board_{}'.format(i)
-        #         logger.debug('adding card {} at {}, {}'.format(card_name, x, y))
-        #         img.paste(self.img[card_name], (x, y))
-        #         cards_map['{},{}'.format(x, y)] = card_name
-        #         x += card_shape[0]
+        x = 0
+        y = card_shape[1] * 4 + 4
+        for i in [1, 4, 5]:
+            card_name = f'board_{i}'
+            logger.debug(f'adding card {card_name} at {x}, {y}')
+            img.paste(self.img[card_name], (x, y))
+            cards_map[f'{x},{y}'] = card_name
+            x += card_shape[0]
 
         img.save(path.join(self.PWD, 'img', 'cards_map.png'))
+        img.show()
 
         with open(self.FILE_CARDS_MAP, 'w') as f:
             cards_map = ruamel.yaml.dump(cards_map, f)
@@ -248,3 +250,11 @@ class ThinkingPlayerError(Exception):
 
 class BoardError(Exception):
     pass
+
+
+class PlayerActionError(Exception):
+    """the player actions have problems"""
+
+
+class GamePhaseError(Exception):
+    """something is wrong regarding the phase of the game"""

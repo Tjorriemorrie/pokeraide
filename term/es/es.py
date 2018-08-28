@@ -8,6 +8,7 @@ from elasticsearch_dsl import Index, DocType, String, Date, Integer, Float, Bool
 from operator import pos
 from sortedcontainers import SortedDict
 
+from pe.pe import PE
 from pocket_rankings.pocket_rankings import PocketRankings
 
 
@@ -41,40 +42,48 @@ class GameAction(DocType):
     preflop_1_btp = Float()
     preflop_1_po = Float()
     preflop_1_rvl = Integer()
+    preflop_1_hs = Float()
     preflop_2 = String(index='not_analyzed')
     preflop_2_btp = Float()
     preflop_2_po = Float()
     preflop_2_rvl = Integer()
+    preflop_2_hs = Float()
     preflop_aggro = Boolean()
 
     flop_1 = String(index='not_analyzed')
     flop_1_btp = Float()
     flop_1_po = Float()
     flop_1_rvl = Integer()
+    flop_1_hs = Float()
     flop_2 = String(index='not_analyzed')
     flop_2_btp = Float()
     flop_2_po = Float()
     flop_2_rvl = Integer()
+    flop_2_hs = Float()
     flop_aggro = Boolean()
 
     turn_1 = String(index='not_analyzed')
     turn_1_btp = Float()
     turn_1_po = Float()
     turn_1_rvl = Integer()
+    turn_1_hs = Float()
     turn_2 = String(index='not_analyzed')
     turn_2_btp = Float()
     turn_2_po = Float()
     turn_2_rvl = Integer()
+    turn_2_hs = Float()
     turn_aggro = Boolean()
 
     river_1 = String(index='not_analyzed')
     river_1_btp = Float()
     river_1_po = Float()
     river_1_rvl = Integer()
+    river_1_hs = Float()
     river_2 = String(index='not_analyzed')
     river_2_btp = Float()
     river_2_po = Float()
     river_2_rvl = Integer()
+    river_2_hs = Float()
     river_aggro = Boolean()
 
     created_at = Date()
@@ -366,25 +375,38 @@ class ES:
         return r
 
     @classmethod
-    def save_game(self, players, data, site_name, vs):
+    def save_game(self, players, data, site_name, vs, board):
         logger.info('saving game...')
-        names_and_balances = ''.join(['{}{}'.format(p['name'], p['balance']) for p in players.values()])
-        logger.debug('names and balances: {}'.format(names_and_balances))
+        names_and_balances = ''.join([f'{p["name"]}{p["balance"]}' for p in players.values()])
+        logger.debug(f'names and balances: {names_and_balances}')
         for s, d in data.items():
             doc = {}
             id = names_and_balances
             for phase in ['preflop', 'flop', 'turn', 'river']:
-                logger.debug('data for {}: {}'.format(phase, d[phase]))
+                logger.debug(f'data for {phase}: {d[phase]}')
                 for i, action_info in enumerate(d[phase]):
                     id += action_info['action']
-                    doc['{}_{}'.format(phase, i + 1)] = action_info['action']
-                    doc['{}_{}_rvl'.format(phase, i + 1)] = action_info['rvl']
+                    doc[f'{phase}_{i+1}'] = action_info['action']
+                    doc[f'{phase}_{i+1}_rvl'] = action_info['rvl']
                     if i == 0:
-                        doc['{}_aggro'.format(phase)] = action_info['aggro']
+                        doc[f'{phase}_aggro'] = action_info['aggro']
                     if 'bet_to_pot' in action_info:
-                        doc['{}_{}_btp'.format(phase, i + 1)] = action_info['bet_to_pot']
+                        doc[f'{phase}_{i+1}_btp'] = action_info['bet_to_pot']
                     if action_info.get('pot_odds'):
-                        doc['{}_{}_po'.format(phase, i + 1)] = action_info['pot_odds']
+                        doc[f'{phase}_{i+1}_po'] = action_info['pot_odds']
+                    if d['hand'] and d['hand'] not in [['  ', '  '], ['__', '__']]:
+                        logger.info(f'do hand ranking of {d["hand"]}')
+                        if phase == 'river':
+                            hs_board = board
+                        elif phase == 'turn':
+                            hs_board = board[:4]
+                        elif phase == 'flop':
+                            hs_board = board[:3]
+                        else:
+                            hs_board = []
+                        hs_board.extend(['__'] * (5 - len(hs_board)))
+                        hs = PE.hand_strength(d['hand'], hs_board, action_info['rvl'])
+                        doc[f'{phase}_{i+1}_hs'] = hs
             if doc:
                 doc.update({
                     '_id': id,
@@ -393,7 +415,7 @@ class ES:
                     'vs': vs,
                     'created_at': datetime.datetime.utcnow(),
                 })
-                logger.info('saving doc: {}'.format(json.dumps(doc, indent=3, default=str)))
+                logger.info(f'saving doc: {json.dumps(doc, indent=3, default=str)}')
                 GameAction(**doc).save()
 
     @classmethod
