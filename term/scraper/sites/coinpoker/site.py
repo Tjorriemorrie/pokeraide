@@ -2,29 +2,40 @@ import logging
 import os.path
 import re
 from collections import deque, Counter
-from operator import xor
+from operator import xor, itemgetter
 
 import numpy as np
 
 from scraper.sites.base import BaseSite, SiteException, NoDealerButtonError, PocketError, BalancesError, ContribError, \
-    ThinkingPlayerError, BoardError, PlayerActionError
+    ThinkingPlayerError, BoardError, PlayerActionError, BalanceNotFound
 
 logger = logging.getLogger(__name__)
 
 
 SITE_ACTION_MAP = {
     'ante': 'ante',
+    'small blind': 'sb',
     'small blimi': 'sb',
+    'srriall blinti': 'sb',
+    'big blind': 'bb',
     'big blimi': 'bb',
     'biq blinti': 'bb',
+    'big blinti': 'bb',
+    'fold': 'fold',
+    'fol': 'fold',
     'folri': 'fold',
     'folti': 'fold',
+    'foch': 'fold',
     'check': 'check',
+    'checit': 'check',
     'bet': 'bet',
     'raise': 'raise',
+    'muck': 'muck',
     'mucit': 'muck',
     'call': 'call',
     'allin': 'allin',
+    'sit out': 'sit out',
+    'sit oiit': 'sit out',
 }
 
 
@@ -143,17 +154,19 @@ class CoinPoker(BaseSite):
                     break
             if not self.btn_seat:
                 self.btn_box = None
-                raise NoDealerButtonError('No seat for dealer button loc {}'.format(btn_loc))
+                raise NoDealerButtonError(f'No seat for dealer button at {btn_loc}')
 
         logger.info(f'player {self.btn_seat} is dealer')
         return self.btn_seat
 
-    def parse_names(self, img):
+    def parse_names(self, img, filter_seat=None):
         """Parses names. OCR is not necessary, just use the hash of the image as
         foe name. Hero will always be centered."""
         coords = self.coords['names']
         logger.info(f'parsing names with {coords}')
         for s, name_loc in coords['seats'].items():
+            if filter_seat and filter_seat != s:
+                continue
             name_box = (
                 name_loc[0],
                 name_loc[1],
@@ -169,11 +182,19 @@ class CoinPoker(BaseSite):
             # name = re.sub('( i| 1)$', '', name)
             logger.debug(f'Player {s} name: {name}')
             self.__names[s].append(name)
+
+        if filter_seat:
+            if not self.__names[filter_seat]:
+                return
+            name = Counter(self.__names[filter_seat]).most_common()[0][0]
+            return name
+
         common_names = {
             s: Counter(q).most_common()[0][0]
             for s, q in self.__names.items()
         }
-        logger.info('Names {}'.format(common_names))
+
+        logger.info(f'Names {common_names}')
         return common_names
 
     def parse_balances(self, img, filter_seat=None, return_txt=False):
@@ -205,7 +226,8 @@ class CoinPoker(BaseSite):
             if txt:
                 logger.info(f'Player {s} balance is text {txt}')
                 if txt not in SITE_ACTION_MAP:
-                    logger.error(f'Could not figure out what {txt} is')
+                    # can be chat overlay or bad detection of money
+                    logger.warning(f'Could not figure out what {txt} is')
                 elif return_txt:
                     return SITE_ACTION_MAP[txt]
                 continue
@@ -319,7 +341,7 @@ class CoinPoker(BaseSite):
             if not loc_card:
                 if self.debug:
                     self.parse_board_region(img)
-                # raise BoardError(f'Board card {i} not identified on cards_map image')
+                # cannot raise due to notifications (e.g. slow connection) covers board
                 continue
             card_name = self.cards_map.get('{},{}'.format(*loc_card))
             if not card_name:
@@ -331,6 +353,10 @@ class CoinPoker(BaseSite):
                 logger.debug(f'no card at that board position {i}')
                 break
             board.append(card_name)
+
+        # if only first card found then it breaks on BOARD_SITE_MAP
+        if len(board) < 3:
+            board = []
 
         logger.debug(f'Board = {board}')
         return board
@@ -365,7 +391,7 @@ class CoinPoker(BaseSite):
         card_shape = self.coords['card_shape']
         pocket = []
         coords = self.coords['pocket_cards']
-        ratio = coords['ratio']
+        board_card_shape = self.coords['board']['card_shape']
         logger.debug(f'parsing pocket of player {s} with {coords} [card shape = {card_shape}]')
         for _, pt_s in enumerate(coords['seats'][s]):
             i = _ + 1
@@ -376,32 +402,32 @@ class CoinPoker(BaseSite):
                 pt_s[1] + card_shape[1]
             )
             img_pocket = img.crop(loc_pt)
-            img_resized = img_pocket.resize((
-                card_shape[0] + round(card_shape[0] / ratio),
-                card_shape[1] + round(card_shape[1] / ratio)
-            ))
+            img_resized = img_pocket.resize(board_card_shape)
             if self.debug:
-                img_pocket.save(os.path.join(self.PWD, 'pocket_{}_{}.png'.format(s, i)))
-                img_resized.save(os.path.join(self.PWD, 'pocket_{}_{}_resized.png'.format(s, i)))
-
+                # img_pocket.save(os.path.join(self.PWD, 'pocket_{}_{}.png'.format(s, i)))
+                img_resized.save(os.path.join(self.PWD, 'pocket_{}_{}.png'.format(s, i)))
             loc_card = self.match_template(self.img['cards_map'], img_resized, coords['th_tpl'])
-            logger.debug(f'player {s} pocket matched loc: {loc_card}')
             if not loc_card:
                 logger.warning(f'Player {s} pocket card {i} not identified on cards_map image')
                 if self.debug:
                     self.parse_pocket_region(img, s, 'cards')
                 continue
+            logger.debug(f'Player {s} pocket matched loc: {loc_card}')
             card_name = self.cards_map.get(f'{loc_card[0]},{loc_card[1]}')
             if not card_name:
-                raise PocketError(f'Player {s} card {i} name not found at {loc_card}')
-            logger.debug(f'Player {s} card {i} identified as {card_name}')
+                logger.warning(f'Player {s} card {i} name not found at {loc_card}')
+                if self.debug:
+                    self.parse_pocket_region(img, s, 'cards')
+                # cannot raise otherwise taking action will fold player when he clearly has cards
+                return self.HOLE_CARDS
             if len(card_name) != 2:
-                raise PocketError('Card incorrectly identified')
+                raise PocketError(f'Card incorrectly identified on map as {card_name}')
+            logger.debug(f'Player {s} card {i} identified as {card_name}')
             pocket.append(card_name)
 
         if len(pocket) == 1:
             logger.error(f'Incorrect number of cards identified: {len(pocket)}')
-            return []
+            return self.HOLE_CARDS
 
         logger.info(f'Player {s} pocket = {pocket}')
         return pocket
@@ -410,8 +436,7 @@ class CoinPoker(BaseSite):
         """Parses the pocket region to identify the loc of the card"""
         logger.info(f'Parsing player {s} region')
         coords = self.coords['pocket_regions']
-        ratio = self.coords['pocket_cards']['ratio']
-        logger.debug(f'coords: {coords} and ratio {ratio}')
+        logger.debug(f'coords: {coords}')
         pt_s = coords['seats'][s]
         loc_s = (
             pt_s[0],
@@ -424,18 +449,21 @@ class CoinPoker(BaseSite):
             img_region.save(os.path.join(self.PWD, 'region_{}.png'.format(s)))
 
         if target == 'cards':
-            img_resized = img_region.resize((
-                round(coords['shape'][0] // ratio),
-                round(coords['shape'][1] // ratio)
-            ))
+            ratio = self.coords['ratio']
+            resize_target = (
+                round(coords['shape'][0] * ratio),
+                round(coords['shape'][1] * ratio)
+            )
+            logger.debug(f'Resizing card region to {resize_target} from ratio {ratio}')
+            img_resized = img_region.resize(resize_target)
             if self.debug:
                 img_resized.save(os.path.join(self.PWD, 'region_{}_resized.png'.format(s)))
             cards = self.match_cards(img_resized, coords['th_tpl'])
             if cards:
                 for card_name, loc_region in cards.items():
                     loc_card = [
-                        loc_s[0] + round(loc_region[0] * coords['resize']),
-                        loc_s[1] + round(loc_region[1] * coords['resize'])
+                        pt_s[0] + round(loc_region[0] / ratio),
+                        pt_s[1] + round(loc_region[1] / ratio)
                     ]
                     logger.info(f'Player {s} parsed region gives: {card_name} at {loc_card}')
 
@@ -473,12 +501,32 @@ class CoinPoker(BaseSite):
         sb, bb = structures[ante]
         logger.info('Structure for ante {} is SB {} and BB {}'.format(ante, sb, bb))
 
-    def infer_player_action(self, img, s, phase, pocket, contrib, engine_data, current_pot):
+    def infer_player_action(self, img, s, phase, pocket, contrib, engine, current_pot, board_moved, expected):
+        cmd = None
+        d = engine.data[s]
         balance = self.parse_balances(img, s, True)
+
+        if balance == 'muck':
+            # during river showdown, state is not gg for `check_showdown`, thus
+            # thus check if player mucked, which means foe called
+            return ['c']
+
+        if not pocket:
+            # when foe has no cards, he folded, but check muck first
+            return ['f']
+
+        # balance is None
+        # could not identify text or balance, maybe chat overlay
+        #
+        # cannot get action, chat overlay -> cannot wait here, assuming call
+        # to prevent: preflop action was obscured by chat, now scraped flop action which is wrong
+        if balance is None:
+            cmd = ['c']
 
         # balance is string with action taken
         if isinstance(balance, str):
-            cmd = []
+            if balance not in expected:
+                raise PlayerActionError(f'Action {balance} is not in expected {expected}')
             # can confirm fold with empty pocket
             if balance == 'fold':
                 if pocket:
@@ -493,7 +541,7 @@ class CoinPoker(BaseSite):
             elif balance == 'bet':
                 if contrib:
                     # the amount raised would be with how much our contrib changed
-                    amt = contrib - engine_data['contrib']
+                    amt = contrib - d['contrib']
                 else:
                     # others might have folded, check if pot and total is the same
                     pot, total = self.parse_pot_and_total(img)
@@ -505,7 +553,7 @@ class CoinPoker(BaseSite):
             elif balance == 'raise':
                 if contrib:
                     # the amount raised would be with how much our contrib changed
-                    amt = contrib - engine_data['contrib']
+                    amt = contrib - d['contrib']
                 else:
                     # others might have folded, check if pot and total is the same
                     pot, total = self.parse_pot_and_total(img)
@@ -515,53 +563,44 @@ class CoinPoker(BaseSite):
                 cmd = ['r', amt]
             # can confirm and should have contrib
             elif balance == 'call':
-                # player calling should have their contrib in front of them
-                if not contrib:
-                    # otherwise it is already collected, check pot and total are the same
-                    pot, total = self.parse_pot_and_total(img)
-                    if pot != total:
-                        raise PlayerActionError(f'Player {s} call but no contrib?')
+                # could check for contrib, but can catch animation where contribs going to pot
                 cmd = ['c']
             if not cmd:
                 raise PlayerActionError(f'Could not infer what player {s} did with {balance}')
-            logger.debug(f'Inferred player {s} did {cmd}')
-            return cmd
 
         # balance is amount
         # balance changed
-        else:
-            balances_scr = self.check_player_balance(s)
-            if balances_scr:
-                balance_diff = self.players[s]['balance'] - balances_scr[s]
-                logger.debug('balance diff = {} (bal {} - scr {})'.format(
-                    balance_diff, self.players[s]['balance'], balances_scr[s]))
-                if balance_diff < 0:
-                    logger.error('Player {} already received {} winnings!'.format(s, balance_diff))
-                    balance_diff = 0
+        if not cmd:
+            player_balance = engine.players[s]['balance']
+            balance_diff = player_balance - balance
+            logger.debug(f'balance diff = {balance_diff} (bal {player_balance} - scr {balance})')
+            if balance_diff < 0:
+                logger.error(f'Player {s} already received {balance_diff} winnings!')
+                balance_diff = 0
 
-            contribs_scr = self.site.parse_contribs(self.img, s).get(s, 0)
-            contrib_diff = contribs_scr - self.engine.data[s]['contrib']
-            logger.debug('contrib diff= {} (scr {} - trib {})'.format(
-                contrib_diff, contribs_scr, self.engine.data[s]['contrib']))
+            contrib_diff = contrib - d['contrib']
+            logger.debug(f'contrib diff= {contrib_diff} (scr {contrib} - trib {d["contrib"]})')
 
             # adjust contrib for blinds
             # eg1: had p7 15sb facing 90, thus diff/amt = 75
             # might be only when the board changed, and contrib no longer there
-            if phase == self.engine.PHASE_PREFLOP and not self.board_moved:
-                d = self.engine.data[s]
-                if d['is_SB']:
-                    balance_diff -= self.engine.sb_amt
-                    logger.debug('SB {} deducted from balance_diff: {}'.format(self.engine.sb_amt, balance_diff))
-                if d['is_BB']:
-                    balance_diff -= self.engine.bb_amt
-                    logger.debug('BB {} deducted from balance_diff: {}'.format(self.engine.bb_amt, balance_diff))
+            # if phase == engine.PHASE_PREFLOP and not board_moved:
+            #     if d['is_SB']:
+            #         balance_diff -= engine.sb_amt
+            #         logger.debug(f'SB {engine.sb_amt} deducted from balance_diff: {balance_diff}')
+            #     if d['is_BB']:
+            #         balance_diff -= engine.bb_amt
+            #         logger.debug(f'BB {engine.bb_amt} deducted from balance_diff: {balance_diff}')
+
+            # action name is not validated in expected as for any chips moved it only uses bet
 
             # check
             if not balance_diff and not contrib_diff:
                 logger.debug('No change in balance')
-                if 'check' not in self.expected:
-                    raise ValueError('No balance change on player but he cannot check')
                 cmd = ['k']
+                if 'check' not in expected:
+                    # happens when player checked/folded and thinking went away too early
+                    raise PlayerActionError('No balance and contrib change but check not expected')
 
             # chips moved
             else:
@@ -570,7 +609,7 @@ class CoinPoker(BaseSite):
                     logger.debug('amt = balance_diff')
                     amt = balance_diff
                 # when table has gathered money
-                elif not contribs_scr:
+                elif not contrib:
                     logger.debug('amt = balance_diff + contrib_diff')
                     amt = balance_diff + contrib_diff
                 # assume balance change is what was the bet
@@ -578,4 +617,30 @@ class CoinPoker(BaseSite):
                     logger.debug('amt = balance_diff')
                     amt = balance_diff
                 cmd = ['b', amt]
+
+        logger.debug(f'Inferred player {s} did {cmd}')
+        return cmd
+
+    def calc_board_to_pocket_ratio(self):
+        results = []
+        spc = self.img['small_pocket_card']
+        board_3h = self.img['3h']
+        board_3h.show()
+        best_fit = (None, 0)
+        for px in range(board_3h.size[0], board_3h.size[0] * 3):
+            # print(f'current x-axis px is {width}')
+            ratio = px / spc.size[0]
+            width = round(spc.size[0] * ratio)
+            height = round(spc.size[1] * ratio)
+            spc_resized = spc.resize((width, height))
+            mml = self.match_template(spc_resized, board_3h, 0, mml=True)
+            if not mml:
+                continue
+            results.append((ratio, mml[1]))
+            print(f'Ratio {ratio} has mml max of {mml[1]}')
+            if mml[1] > best_fit[1]:
+                best_fit = (spc_resized, mml[1])
+        results.sort(key=itemgetter(1), reverse=True)
+        print(f'Top ratios {results[:4]}')
+        best_fit[0].show()
 

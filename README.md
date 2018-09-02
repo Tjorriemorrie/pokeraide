@@ -59,3 +59,5 @@ Required for text rotation and image template matching.
 
 Crop templates from grayscale window.png image.
 But for mse the images are required to be copied from the parsed debug img to the img folder.
+But should still have a source, e.g. the board cards
+The cutots should be as small as possible with it clipping the edges, to prevent the matches shifting

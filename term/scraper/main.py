@@ -13,7 +13,7 @@ from engine.engine import Engine, EngineError
 from es.es import ES
 from mc.mc import MonteCarlo
 from scraper.sites.base import SiteException, NoDealerButtonError, PocketError, ThinkingPlayerError, BalancesError, \
-    BoardError, PlayerActionError, GamePhaseError
+    BoardError, PlayerActionError, GamePhaseError, BalanceNotFound
 from scraper.sites.coinpoker.site import CoinPoker
 from scraper.sites.pokerstars.site import PokerStars
 from scraper.sites.partypoker.site import PartyPoker
@@ -223,16 +223,19 @@ class Scraper(View):
                     logger.debug('button moved! we need to finish up what engine is')
                     self.finish_it()
                 elif self.engine.phase == self.engine.PHASE_SHOWDOWN:
-                    self.check_showdown_winner()
-                    if self.debug:
-                        for s, d in self.engine.data.items():
-                            if 'in' in d['status'] and d['hand'] == ['__', '__']:
-                                h = self.check_players_pockets(s)
-                                if h:
-                                    d['hand'] = h
+                    if len(self.engine.board) != 5:
+                        logger.info(f'Still drawing on board {self.engine.board}')
+                    else:
+                        self.check_showdown_winner()
+                    time.sleep(1)
                 elif self.engine.phase == self.engine.PHASE_GG:
-                    logger.info('Game completed but waiting for button move')
-                    time.sleep(0.3)
+                    pot, total = self.site.parse_pot_and_total(self.img)
+                    if not pot and not total:
+                        logger.info(f'Game completed and pot allocated')
+                        self.finish_it()
+                    else:
+                        logger.info('Game completed but waiting for button move')
+                        time.sleep(0.5)
                 else:
                     logger.debug('button not moved, just continue loop')
                     self.wait_player_action()
@@ -285,13 +288,9 @@ class Scraper(View):
                     logger.info(f'Engine caught up to {mapped_board}, but gg & sd handled separately')
                     return
                 self.check_player_action()
-                # todo catch playeractionerror here
                 self.run_mc(0.3)
             self.board_moved = False
-
-            # updating names once per game at flop
-            if self.engine.phase == self.engine.PHASE_FLOP:
-                self.check_names()
+            # do not update last_thinking_phase as previous phase text still shows, giving wrong action
 
         # an allin would end here
         if self.engine.phase == self.engine.PHASE_SHOWDOWN:
@@ -304,13 +303,31 @@ class Scraper(View):
         try:
             current_s = self.site.parse_thinking_player(self.img)
             logger.debug(f'Current thinking player is {current_s}')
+
         except ThinkingPlayerError as e:
             logger.debug(f'Current thinking player is unknown, estimating action for {self.engine.s}')
-            # check if current player action from text
-            # but to prevent overlap between phases
-            # a thinking is first required
-            if self.last_thinking_phase == self.engine.phase:
-                self.check_player_action()
+            # during any phase, if pot removed, then have to loop to find winner with contrib
+            pot, total = self.site.parse_pot_and_total(self.img)
+            if not pot:
+                while self.engine.phase not in [self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG] \
+                        and self.engine.phase == self.last_thinking_phase:
+                    try:
+                        self.check_player_action()
+                    except PlayerActionError as exc:
+                        # happened when player did not move, but thinking already moved. wtf
+                        return
+                if self.engine.phase == self.engine.PHASE_SHOWDOWN:
+                    self.check_showdown_winner()
+                elif self.engine.phase == self.engine.PHASE_GG:
+                    self.finish_it()
+            # else we can check for action considering we are in same phase
+            elif self.last_thinking_phase == self.engine.phase:
+                try:
+                    self.check_player_action()
+                except PlayerActionError as exc:
+                    # happened when player did not move, but thinking already moved. wtf
+                    return
+
         else:
             self.last_thinking_phase = self.engine.phase
 
@@ -318,7 +335,8 @@ class Scraper(View):
             if current_s == self.engine.q[0][0]:
                 logger.debug(f'player to act {current_s} is still thinking, so can we...')
                 if current_s != self.last_thinking_seat:
-                    self.check_player_balances()
+                    self.check_player_name(current_s)
+                    self.check_player_balance(current_s)
                     self.last_thinking_seat = current_s
                 # longer thinking time for hero
                 thinking_time = 2 if current_s == self.site.HERO else 1
@@ -334,7 +352,6 @@ class Scraper(View):
                         return
                     try:
                         self.check_player_action()
-                    # todo balances error still applicable?
                     except (BalancesError, PlayerActionError) as e:
                         logger.warning(e)
                         # retry with new screen
@@ -364,7 +381,8 @@ class Scraper(View):
 
         pocket = self.check_players_pockets(s)
         contrib = self.site.parse_contribs(self.img, s)
-        cmd = self.site.infer_player_action(self.img, s, phase, pocket, contrib, self.engine.data[s], self.engine.current_pot)
+        cmd = self.site.infer_player_action(self.img, s, phase, pocket, contrib or 0, self.engine,
+                                            self.engine.current_pot, self.board_moved, self.expected)
 
         # do action, rotate, and get next actions
         logger.debug(f'parsed action {cmd}')
@@ -427,6 +445,8 @@ class Scraper(View):
             if pocket:
                 logger.info(f'Player {s} is showing {pocket}')
                 pockets[s] = pocket
+                if hasattr(self, 'engine'):
+                    self.engine.data[s]['hand'] = pocket
                 continue
 
             logger.info(f'Player {s} has no cards')
@@ -436,14 +456,19 @@ class Scraper(View):
 
         return pockets
 
-    def check_player_balances(self):
+    def check_player_name(self, seat):
+        """Get name hashes and set it to players"""
+        name = self.site.parse_names(self.img, seat)
+        if name:
+            self.players[seat]['name'] = name
+            logger.info(f'Player {seat} name is {name}')
+
+    def check_player_balance(self, seat):
         """Update player balances"""
-        balances = self.site.parse_balances(self.img)
-        for s, balance in balances.items():
-            # contrib = self.site.parse_contribs(self.img, s)
-            # new_balance = balance + contrib if contrib else balance
-            self.players[s]['balance'] = balance
-        logger.debug(f'Player balances updated')
+        balance = self.site.parse_balances(self.img, seat)
+        if balance:
+            self.players[seat]['balance'] = balance
+            logger.debug(f'Player {seat} balance is {balance}')
 
     def start_new_game(self):
         """Dealer button moved: create new game!
@@ -488,7 +513,7 @@ class Scraper(View):
             return
 
         # not doing any more checks, since if they have cards and there is a pot: game on!
-        # self.check_names()  # checked at flop to save time during start
+        # self.check_player_name()  # checked at flop to save time during start
         # always have text on it, so who cares
         # balances = self.site.parse_balances(self.img)
 
@@ -514,13 +539,6 @@ class Scraper(View):
         self.waiting_for_new_game = False
         self.button_moved = False
         self.board_moved = False
-
-    def check_names(self):
-        """Get name hashes and set it to players"""
-        names = self.site.parse_names(self.img)
-        for s, name in names.items():
-            self.players[s]['name'] = name
-        logger.info('checked player names')
 
     def check_ante(self, vs, pot):
         """Check ante from contrib total before gathering/matched. Using player balances instead
@@ -591,143 +609,23 @@ class Scraper(View):
         self.print()
 
     def finish_it(self):
-        """Finish the game. Calculate the winner and winnings
-         * set board
-         * finish players moves by checking balance only (check/fold)
-         * till gg state,
-
-        A player can fold, then there is only 1 player left allin, then the engine
-            will finish the game (empty actions) and allocate the funds
-        """
+        """Finish the game. Should already have winner."""
         logger.info('finish the game')
-
-        # todo img already of new round
-        # todo but somewhere hands should be scraped
-
-        # if we do not have a winner then estimate winner from balances
         if not self.engine.winner:
-            balances = {}
-            for s, d in self.engine.data.items():
-                if 'in' not in d['status']:
-                    continue
-                # todo fix check_player_balance to use here
-                try:
-                    balances.update(self.site.parse_balances(self.img, s))
-                except BalancesError as e:
-                    logger.error(e)
-                    balances[s] = 0
-            logger.debug('current balances = {}'.format(balances))
-
-            balances_diffs = {
-                s: cb - self.players[s]['balance']
-                for s, cb in balances.items()
-            }
-            logger.debug('balance diffs: {}'.format(balances_diffs))
-
-            # get highest gain and set that as the winner
-            # todo handle draws and split pots
-            winner = max(balances_diffs.items(), key=itemgetter(1))[0]
-            logger.debug('Winner is player {}'.format(winner))
-
-            # contribs from screen (to add ante and blinds back)
-            contribs_scr = self.site.parse_contribs(self.img)
-            logger.debug('contribs from screen: {}'.format(contribs_scr))
-
-            # have to try to get actions taken for betting or calling for correct stats
-            while self.expected and 'gg' not in self.expected:
-                s = self.engine.q[0][0]
-
-                # e g player had contrib 30, facing 60, and folded. next was 30 SB and 4 ante
-                # total diff = -64
-                # with contrib removed = -34
-                # has to be more than short 34 >= 30 (that's true, but)
-                # check if equal and if not check if equal start blind diff
-                contribs = {s: d['contrib'] for s, d in self.engine.data.items()}
-                contrib_short = max(contribs.values()) - contribs[s]
-                logger.debug('player {} contrib {} and short = {}'.format(s, contribs[s], contrib_short))
-
-                diff = balances_diffs[s]
-                lost_money = False
-                # player gained money (cannot be zero as ante had to be deducted)
-                if diff <= 0:
-
-                    # add contrib back (engine will deduct when gathering)
-                    diff = diff + contribs[s]
-                    logger.debug('added contrib {} back to player {} = diff {}'.format(contribs[s], s, diff))
-
-                    # scr could be where player receives money,
-                    # button always moved, so it is certain that antes and blinds are on the screen
-                    if diff:
-                        # add ante back if total
-                        # todo deduct correct ante amount from next game (even if calling method, then player may be out)
-                        diff += self.engine.ante
-                        logger.debug('added ante {} back to player {} = diff {}'.format(self.engine.ante, s, diff))
-
-                        # if player has contrib on screen then deduct it
-                        # no need to calculate it is definitely next game SB/BB/b
-                        diff += contribs_scr.get(s, 0)
-                        logger.debug('added scr {} back to player {} = diff {}'.format(contribs_scr.get(s, 0), s, diff))
-
-                    # if player still have lost money, then he really lost money
-                    if diff < 0:
-                        lost_money = True
-                        # diff should now be equal to short
-                        if -diff != contrib_short:
-                            logger.warn('Expected player {} diff {} to be equal to short {}'.format(s, diff, contrib_short))
-
-                logger.debug('Player {} lost {}: {}'.format(s, diff, lost_money))
-
-                # faced the aggro -> call
-                if contrib_short and lost_money:
-                    cmd = ['c']
-                # scared from aggro -> fold
-                elif contrib_short and not lost_money:
-                    # winner called and won, but losers folded
-                    if s == winner:
-                        cmd = ['c']
-                    else:
-                        cmd = ['f']
-                # made a bet but lost
-                elif not contrib_short and lost_money:
-                    if s == winner:
-                        raise BalancesError('Winner cannot make bet and lose')
-                    cmd = ['b', -diff]
-                # no bet/call but no money lost either -> check
-                elif not contrib_short and not lost_money:
-                    cmd = ['k']
-                    # if just the two left and they did not see the river, he folded
-                    # for some fucking stupid dumb reason
-                    if s != winner and len(self.engine.board) < 5 and self.engine.rivals == 2:
-                        cmd = ['f']
-                        logger.info('Changed check to fold for loser')
-                else:
-                    raise BalancesError('What did player {} do?'.format(s))
-
-                action = self.engine.do(cmd)
-                action_name = self.ACTIONS_MAP[action[0]]
-                logger.info('Player {} did {} {}'.format(s, action_name, action))
-                if self.debug:
-                    input('$ check player action')
-
-                self.expected = self.engine.available_actions()
-
-            # from while loop: 'gg' in expected or empty
-            if self.expected:
-                cmd = ['gg', winner]
-                logger.debug('final gg cmd = {}'.format(cmd))
-                self.engine.do(cmd)
-
+            raise GamePhaseError(f'Game does not have winner but in phase {self.engine.phase}')
         self.waiting_for_new_game = True
         ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)
-        logger.info('Game over! Player {} won!'.format(self.engine.winner))
-        if self.debug:
-            logger.debug('check gg')
+        logger.info(f'Game over! Player {self.engine.winner} won!')
 
     def check_showdown_winner(self):
         """Winner can be identified by no pot amounts but one contrib"""
         if 'gg' not in self.expected:
             logger.debug(f'gg not in expected {self.expected}')
             return
+
+        for s, d in self.engine.data.items():
+            if 'in' in d['status'] and d['hand'] == self.site.HOLE_CARDS:
+                self.check_players_pockets(s)
 
         # todo add check for board is 5 cards
 
@@ -737,11 +635,13 @@ class Scraper(View):
             return
 
         contribs = self.site.parse_contribs(self.img)
-        if len(contribs) != 1:
+        # can contain pot and sidepots
+        if len(contribs) < 1:
             logger.debug(f'There is not a single contrib but {contribs}')
             return
 
-        winner = list(contribs)[0]
+        # todo support split pot winners
+        winner = max(contribs.items(), key=itemgetter(1))[0]
         logger.info(f'Winner of showdown is {winner}')
         cmd = ['gg', winner]
         self.engine.do(cmd)
@@ -749,16 +649,15 @@ class Scraper(View):
         self.waiting_for_new_game = True
         ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)
         logger.info(f'Game over! Player {self.engine.winner} won!')
-        if self.debug:
-            logger.debug('check sd')
-
 
     def cards(self):
         """Generate cards for a site"""
         self.site.generate_cards()
 
-
     def chips(self):
         """Generate cards for a site"""
         self.site.generate_chips()
+
+    def calc_board_to_pocket_ratio(self):
+        self.site.calc_board_to_pocket_ratio()
 

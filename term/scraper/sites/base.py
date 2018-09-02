@@ -113,18 +113,21 @@ class BaseSite:
         logger.info('perspective coeffs {}'.format(coeffs))
         return coeffs
 
-    def match_template(self, img, template, threshold, multiple=False):
+    def match_template(self, img, template, threshold, multiple=False, mml=False):
         """Matches a template
         Converts it to grayscale
         Converts img to detect edges
         Checks against provided threshold if matched.
         Return None when below threshold"""
+        img = img.convert('L')
         template = template.convert('L')
         if img.size[0] < template.size[0] or img.size[1] < template.size[1]:
             logger.error('Template cannot be smaller than image provided')
             return
         res = cv2.matchTemplate(np.array(img), np.array(template), cv2.TM_CCOEFF_NORMED)
-        if not multiple:
+        if mml:
+            return cv2.minMaxLoc(res)
+        elif not multiple:
             mml = cv2.minMaxLoc(res)
             logger.debug(f'Min Max Loc: {mml}')
             if mml[0] == 1:
@@ -239,8 +242,14 @@ class NoDealerButtonError(Exception):
 class PocketError(Exception):
     pass
 
+
 class BalancesError(Exception):
     pass
+
+
+class BalanceNotFound(BalancesError):
+    """when the balance cannot be parsed"""
+
 
 class ContribError(Exception):
     pass

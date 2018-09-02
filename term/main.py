@@ -97,6 +97,15 @@ def es(rm):
 cli.add_command(es)
 
 
+@click.command()
+@click.argument('site')
+@click.argument('seats', type=click.INT)
+def board2pocket(site, seats):
+    from scraper.main import Scraper
+    scraper = Scraper(site, seats)
+    scraper.calc_board_to_pocket_ratio()
+cli.add_command(board2pocket)
+
 if __name__ == '__main__':
     logging.config.dictConfig(LOGGING_CONFIG)
     cli(obj={})
