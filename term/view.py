@@ -28,17 +28,17 @@ class View:
         for s, p in self.players.items():
             d = self.engine.data[s]
 
-            r = '{:14}'.format(p['name'] or '---')
+            r = '{:14}'.format(p['name'][:12] or '---')
 
             if not p['status']:
                 print(Style.DIM + Fore.RED + r)
                 continue
 
-            r += '{:7}'.format(p['balance'] + d['contrib'])
+            r += '{:9}'.format(p['balance'] + d['contrib'])
             r += '{:>8}'.format(' '.join(d['hand']))
             r += '{:3}'.format(s)
             r += '{:4d}%'.format(int((1 - d['strength']) * 100))
-            r += '{:>6} '.format(d['matched'] + d['contrib'] or '')
+            r += '{:>8} '.format(d['matched'] + d['contrib'] or '')
             r += '{:3}'.format('')
 
             for phase in ['preflop', 'flop', 'turn', 'river']:

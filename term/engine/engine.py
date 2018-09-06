@@ -387,23 +387,26 @@ class Engine:
             - player balance
 
         '''
-        logger.info('Player {} phase {} DO {}'.format(self.q[0][0], self.phase, action))
+        logger.info(f'Player {self.s} phase {self.phase} DO {action}')
 
         if not action[0]:
-            logger.warn('no action received')
+            logger.warning('no action received')
             return
 
         if action[0] not in ['a', 'b', 'f', 'k', 'c', 'r', 'gg', 'h', 'sb', 'bb']:
-            raise Exception('bad action {} given to engine'.format(action))
+            raise BadActionError(f'bad action {action} given to engine')
 
         if action[0] == 'h':
             hand = [action[2], action[3]] if len(action) > 2 else ['__', '__']
             self.data[int(action[1])]['hand'] = hand
-            logger.info('setting hand for player {} to {}'.format(action[1], hand))
+            logger.info(f'setting hand for player {action[1]} to {hand}')
             # nothing should change when setting hand
             return
 
-        phase_data = getattr(self, self.phase)
+        try:
+            phase_data = getattr(self, self.phase)
+        except AttributeError as exc:
+            raise BadActionError(f'Cannot do {action} during {self.phase}')
 
         if action[0] == 'gg':
             logger.info('GG for player {}'.format(action[1]))
@@ -768,3 +771,7 @@ class Engine:
 
 class EngineError(ValueError):
     """Error during engine DO method."""
+
+
+class BadActionError(EngineError):
+    """Bad action given to do"""

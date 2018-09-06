@@ -171,7 +171,8 @@ class BaseSite:
         # add other
         x = 0
         y = card_shape[1] * 4 + 4
-        for i in [1, 4, 5]:
+        for b in range(5):
+            i = b + 1
             card_name = f'board_{i}'
             logger.debug(f'adding card {card_name} at {x}, {y}')
             img.paste(self.img[card_name], (x, y))

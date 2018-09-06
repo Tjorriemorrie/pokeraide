@@ -2,12 +2,13 @@ import logging
 import os.path
 import re
 from collections import deque, Counter
-from operator import xor, itemgetter
+from itertools import product
+from operator import itemgetter, add, sub
 
 import numpy as np
 
-from scraper.sites.base import BaseSite, SiteException, NoDealerButtonError, PocketError, BalancesError, ContribError, \
-    ThinkingPlayerError, BoardError, PlayerActionError, BalanceNotFound
+from scraper.sites.base import BaseSite, SiteException, NoDealerButtonError, PocketError, ThinkingPlayerError, \
+    BoardError, PlayerActionError
 
 logger = logging.getLogger(__name__)
 
@@ -342,6 +343,7 @@ class CoinPoker(BaseSite):
                 if self.debug:
                     self.parse_board_region(img)
                 # cannot raise due to notifications (e.g. slow connection) covers board
+                # raise BoardError('fooboard')
                 continue
             card_name = self.cards_map.get('{},{}'.format(*loc_card))
             if not card_name:
@@ -355,6 +357,7 @@ class CoinPoker(BaseSite):
             board.append(card_name)
 
         # if only first card found then it breaks on BOARD_SITE_MAP
+        # also happens that not whole flop loaded during screenshot
         if len(board) < 3:
             board = []
 
@@ -413,7 +416,7 @@ class CoinPoker(BaseSite):
                     self.parse_pocket_region(img, s, 'cards')
                 continue
             logger.debug(f'Player {s} pocket matched loc: {loc_card}')
-            card_name = self.cards_map.get(f'{loc_card[0]},{loc_card[1]}')
+            card_name = self.find_card_name_by_loc(loc_card, 2)
             if not card_name:
                 logger.warning(f'Player {s} card {i} name not found at {loc_card}')
                 if self.debug:
@@ -431,6 +434,14 @@ class CoinPoker(BaseSite):
 
         logger.info(f'Player {s} pocket = {pocket}')
         return pocket
+
+    def find_card_name_by_loc(self, loc_card, x_offset=0, y_offset=0):
+        for y in range(y_offset + 1):
+            for x in range(x_offset + 1):
+                for op in [add, sub]:
+                    card_name = self.cards_map.get(f'{op(loc_card[0], x)},{op(loc_card[1], y)}')
+                    if card_name:
+                        return card_name
 
     def parse_pocket_region(self, img, s, target):
         """Parses the pocket region to identify the loc of the card"""
@@ -459,6 +470,7 @@ class CoinPoker(BaseSite):
             if self.debug:
                 img_resized.save(os.path.join(self.PWD, 'region_{}_resized.png'.format(s)))
             cards = self.match_cards(img_resized, coords['th_tpl'])
+            errors = []
             if cards:
                 for card_name, loc_region in cards.items():
                     loc_card = [
@@ -466,6 +478,8 @@ class CoinPoker(BaseSite):
                         pt_s[1] + round(loc_region[1] / ratio)
                     ]
                     logger.info(f'Player {s} parsed region gives: {card_name} at {loc_card}')
+                    errors.append(f'Player {s} parsed region gives: {card_name} at {loc_card}')
+                raise Exception(' - '.join(errors))
 
         elif target == 'back':
             loc_back = self.match_pocket(img_region, coords['th_tpl'])
@@ -565,6 +579,8 @@ class CoinPoker(BaseSite):
             elif balance == 'call':
                 # could check for contrib, but can catch animation where contribs going to pot
                 cmd = ['c']
+            elif balance == 'allin':
+                cmd = ['a']
             if not cmd:
                 raise PlayerActionError(f'Could not infer what player {s} did with {balance}')
 

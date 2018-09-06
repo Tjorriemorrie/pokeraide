@@ -65,7 +65,7 @@ class Scraper(View):
         self.players = {
             s: {
                 'name': 'joe',
-                'balance': 290000,
+                'balance': 1000000,
                 'status': 1,
             }
             for s in range(1, seats + 1)
@@ -140,9 +140,7 @@ class Scraper(View):
                             self.button_moved = False
                             logger.error('Game state aborted!')
                     if self.debug:
-                        input('$ really no tlc?')
-                        img_full.show()
-                        input('$')
+                        logger.warning('TLC not found in image!')
                     time.sleep(1)
                     continue
 
@@ -223,10 +221,7 @@ class Scraper(View):
                     logger.debug('button moved! we need to finish up what engine is')
                     self.finish_it()
                 elif self.engine.phase == self.engine.PHASE_SHOWDOWN:
-                    if len(self.engine.board) != 5:
-                        logger.info(f'Still drawing on board {self.engine.board}')
-                    else:
-                        self.check_showdown_winner()
+                    self.check_showdown_winner()
                     time.sleep(1)
                 elif self.engine.phase == self.engine.PHASE_GG:
                     pot, total = self.site.parse_pot_and_total(self.img)
@@ -256,8 +251,6 @@ class Scraper(View):
                 self.mc.run(timeout)
             except EngineError as e:
                 logger.error(e)
-                if self.debug:
-                    input('$ MC tree state bad')
                 self.mc.init_tree()
                 self.mc.run(timeout)
         self.print()
@@ -316,6 +309,7 @@ class Scraper(View):
                     except PlayerActionError as exc:
                         # happened when player did not move, but thinking already moved. wtf
                         return
+                    self.run_mc(0.3)
                 if self.engine.phase == self.engine.PHASE_SHOWDOWN:
                     self.check_showdown_winner()
                 elif self.engine.phase == self.engine.PHASE_GG:
@@ -327,6 +321,7 @@ class Scraper(View):
                 except PlayerActionError as exc:
                     # happened when player did not move, but thinking already moved. wtf
                     return
+                self.run_mc(0.3)
 
         else:
             self.last_thinking_phase = self.engine.phase
@@ -356,7 +351,7 @@ class Scraper(View):
                         logger.warning(e)
                         # retry with new screen
                         return
-                    self.run_mc(0.1)
+                    self.run_mc(0.3)
 
     def check_player_action(self):
         """It is certain the expected player is not thinking, thus he finished
@@ -507,6 +502,14 @@ class Scraper(View):
 
         # contribs are required for blinds!
         contribs = self.site.parse_contribs(self.img)
+
+        # seems there can be 1 blind, probably when blind fell out during prev round
+        if len(contribs) == 1:
+            logger.error('Found only 1 blind. Not supported.')
+            self.button_moved = False
+            return
+
+        # requires 2 blinds to get sb and bb
         if len(contribs) < 2:
             logger.debug(f'Game has not started as there are {len(contribs)} contribs right now')
             time.sleep(0.1)
@@ -560,7 +563,7 @@ class Scraper(View):
         sb, bb, *_ = contribs_sorted
         logger.info(f'Blinds found: SB {sb} and BB {bb}')
         if sb * 2 != bb:
-            logger.warning('Smallest SB is not 1:2 to BB')
+            logger.error('Smallest SB is not 1:2 to BB')
         return sb, bb
 
     def pre_start(self, vs_players, contribs, ante):
@@ -616,6 +619,7 @@ class Scraper(View):
         self.waiting_for_new_game = True
         ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)
         logger.info(f'Game over! Player {self.engine.winner} won!')
+        raise Exception('foobar')
 
     def check_showdown_winner(self):
         """Winner can be identified by no pot amounts but one contrib"""
@@ -627,7 +631,9 @@ class Scraper(View):
             if 'in' in d['status'] and d['hand'] == self.site.HOLE_CARDS:
                 self.check_players_pockets(s)
 
-        # todo add check for board is 5 cards
+        if len(self.engine.board) != 5:
+            logger.info(f'Still drawing on board {self.engine.board}')
+            return
 
         pot, total = self.site.parse_pot_and_total(self.img)
         if pot or total:
@@ -649,6 +655,7 @@ class Scraper(View):
         self.waiting_for_new_game = True
         ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)
         logger.info(f'Game over! Player {self.engine.winner} won!')
+        raise Exception('foobar')
 
     def cards(self):
         """Generate cards for a site"""
