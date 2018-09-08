@@ -103,7 +103,7 @@ pocket_rankings = PocketRankings.load()
 
 class ES:
 
-    SAMPLE_SIZE = 1 << 6
+    SAMPLE_SIZE = 1 << 8
 
     @classmethod
     def cut_hand_range(cls, stats):
@@ -118,7 +118,7 @@ class ES:
         return hand_range
 
     @classmethod
-    def player_stats(cls, engine, seat):
+    def player_stats(cls, engine, seat, docs_size=0):
         """Get the stats for this history of actions, favouring the current player.
 
         Given number of players
@@ -254,9 +254,14 @@ class ES:
         # pottie = A('percentiles', field='{}_btp'.format(agg_field), percents=[10, 30, 50, 70, 90])
         # sea.aggs.bucket('mesam', sample).metric('pottie', pottie).bucket('aksies', terms)
         sea.aggs.bucket('mesam', sample).bucket('aksies', terms)
+        hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[50])
+        sea.aggs.bucket('hs', sample).metric('hs_agg', hs_agg)
 
-        sea = sea[:0]
+        sea = sea[:docs_size]
         res = sea.execute()
+        assert res._shards['failed'] == 0
+        if docs_size:
+            return res
 
         # debug
         # cls.analyze_stats(sea, seat, res)
@@ -273,10 +278,14 @@ class ES:
         # phase_btps = {k: round(v, 2) for k, v in phase_btps.items() if isinstance(v, float)} or {'0.50': 0.50}
         # logger.debug('cleaned phase_btps {}'.format(phase_btps))
 
+        # hand strength
+        hs = res.aggregations['hs']['hs_agg']['values']['50.0']
+
         # input('>> ')
         return {
             'actions': phase_actions,
             # 'btps': phase_btps,
+            'hs': float(hs),
         }
 
     @classmethod
@@ -380,6 +389,8 @@ class ES:
         names_and_balances = ''.join([f'{p["name"]}{p["balance"]}' for p in players.values()])
         logger.debug(f'names and balances: {names_and_balances}')
         for s, d in data.items():
+            if d['sitout']:
+                continue
             doc = {}
             id = names_and_balances
             for phase in ['preflop', 'flop', 'turn', 'river']:

@@ -281,7 +281,7 @@ class Scraper(View):
                     logger.info(f'Engine caught up to {mapped_board}, but gg & sd handled separately')
                     return
                 self.check_player_action()
-                self.run_mc(0.3)
+                self.run_mc(0.2)
             self.board_moved = False
             # do not update last_thinking_phase as previous phase text still shows, giving wrong action
 
@@ -309,7 +309,7 @@ class Scraper(View):
                     except PlayerActionError as exc:
                         # happened when player did not move, but thinking already moved. wtf
                         return
-                    self.run_mc(0.3)
+                    self.run_mc(0.2)
                 if self.engine.phase == self.engine.PHASE_SHOWDOWN:
                     self.check_showdown_winner()
                 elif self.engine.phase == self.engine.PHASE_GG:
@@ -321,7 +321,7 @@ class Scraper(View):
                 except PlayerActionError as exc:
                     # happened when player did not move, but thinking already moved. wtf
                     return
-                self.run_mc(0.3)
+                self.run_mc(0.2)
 
         else:
             self.last_thinking_phase = self.engine.phase
@@ -334,7 +334,7 @@ class Scraper(View):
                     self.check_player_balance(current_s)
                     self.last_thinking_seat = current_s
                 # longer thinking time for hero
-                thinking_time = 2 if current_s == self.site.HERO else 1
+                thinking_time = 1 if current_s == self.site.HERO else 0.5
                 self.run_mc(thinking_time)
 
             # player (in engine) to act is not the one thinking on screen
@@ -351,7 +351,7 @@ class Scraper(View):
                         logger.warning(e)
                         # retry with new screen
                         return
-                    self.run_mc(0.3)
+                    self.run_mc(0.2)
 
     def check_player_action(self):
         """It is certain the expected player is not thinking, thus he finished
@@ -573,6 +573,7 @@ class Scraper(View):
         for s in range(1, self.site.seats + 1):
             status = s in vs_players
             self.players[s]['status'] = status
+            self.players[s]['sitout'] = False
             if not status:
                 continue
 
@@ -617,9 +618,10 @@ class Scraper(View):
         if not self.engine.winner:
             raise GamePhaseError(f'Game does not have winner but in phase {self.engine.phase}')
         self.waiting_for_new_game = True
-        ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)
+        self.save_game()
         logger.info(f'Game over! Player {self.engine.winner} won!')
-        raise Exception('foobar')
+        if self.debug:
+            raise Exception('Game over')
 
     def check_showdown_winner(self):
         """Winner can be identified by no pot amounts but one contrib"""
@@ -653,9 +655,10 @@ class Scraper(View):
         self.engine.do(cmd)
 
         self.waiting_for_new_game = True
-        ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)
+        self.save_game()
         logger.info(f'Game over! Player {self.engine.winner} won!')
-        raise Exception('foobar')
+        if self.debug:
+            raise Exception('Game over')
 
     def cards(self):
         """Generate cards for a site"""
@@ -668,3 +671,11 @@ class Scraper(View):
     def calc_board_to_pocket_ratio(self):
         self.site.calc_board_to_pocket_ratio()
 
+    def save_game(self):
+        """Check for players that sit out, and do not save their game"""
+        for s, d in self.engine.data.items():
+            if 'f' in [i['action'] for i in d['preflop']]:
+                balance_txt = self.site.parse_balances(self.img, s, True)
+                if balance_txt == 'sit out':
+                    d['sitout'] = True
+        ES.save_game(self.players, self.engine.data, self.engine.site_name, self.engine.vs, self.engine.board)

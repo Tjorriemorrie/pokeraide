@@ -70,6 +70,7 @@ class Engine:
         else:
             self.data = {s: {
                 'status': 'in' if p.get('status') else 'out',
+                'sitout': False,
                 'hand': ['__', '__'] if p.get('status') else ['  ', '  '],
                 'contrib': 0,
                 'matched': 0,
@@ -597,6 +598,7 @@ class Engine:
 
         # adjust strength with current stats
         self.adjust_strength(s, d, action[0])
+
         return action
 
     def gather_the_money(self):
@@ -709,6 +711,12 @@ class Engine:
         """Adjust the min/max tuple of strength based on action taken
         The initialisation is done to help bridge the uknown. Taking all possible hands
         leads to shit decisions"""
+
+        # take hs from
+        if d['stats']['hs']:
+            d['strength'] = d['stats']['hs']
+            return
+
         logger.info('adjusting strength for action {}'.format(a))
 
         if a in ['f', 'k', 'sb', 'bb']:

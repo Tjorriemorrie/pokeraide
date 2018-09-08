@@ -232,6 +232,8 @@ class CoinPoker(BaseSite):
                 elif return_txt:
                     return SITE_ACTION_MAP[txt]
                 continue
+            if return_txt:
+                return
             balance = self.ocr_number(img_bal, lang=self.LANG)
             if balance:
                 balances[s] = balance
