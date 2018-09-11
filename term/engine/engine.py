@@ -621,11 +621,11 @@ class Engine:
         for s, d in self.data.items():
             if returned and d['contrib'] == max_first:
                 d['contrib'] -= returned
-                logger.debug('Returned {} as unmatched for player {}'.format(returned, s))
+                logger.debug(f'Returned {returned} as unmatched for player {s}')
             self.pot += d['contrib']
             self.players[s]['balance'] -= d['contrib']
             d['matched'] += d['contrib']
-            logger.debug('player {} matched: {} (added {})'.format(s, d['matched'], d['contrib']))
+            logger.debug(f'player {s} matched: {d["matched"]} (added {d["contrib"]})')
             d['contrib'] = 0
 
     def is_round_finished(self):
