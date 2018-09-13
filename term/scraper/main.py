@@ -615,8 +615,13 @@ class Scraper(View):
     def finish_it(self):
         """Finish the game. Should already have winner."""
         logger.info('finish the game')
-        if not self.engine.winner:
-            raise GamePhaseError(f'Game does not have winner but in phase {self.engine.phase}')
+
+        # todo BUG: game does get here in showdown
+        # if not self.engine.winner:
+        #     raise GamePhaseError(f'Game does not have winner but in phase {self.engine.phase}')
+        if self.engine.phase == self.engine.PHASE_SHOWDOWN:
+            return self.check_showdown_winner()
+
         self.waiting_for_new_game = True
         self.save_game()
         logger.info(f'Game over! Player {self.engine.winner} won!')

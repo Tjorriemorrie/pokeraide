@@ -84,3 +84,15 @@ class View:
                 print(Style.NORMAL + Fore.WHITE + a)
 
             print('\n')
+
+
+    # def update_ev_change(self):
+    #     """To establish how volatile the analysis still is"""
+    #     self.ev_history.append(sum(a[1] for a in self.current_actions))
+    #     self.ev_history = self.ev_history[:20]
+    #     change_oldest = sum(self.ev_history[10:])
+    #     change_latest = sum(self.ev_history[:10])
+    #     try:
+    #         self.ev_roc = 100 * change_latest / change_oldest
+    #     except ZeroDivisionError:
+    #         self.ev_roc = 0
