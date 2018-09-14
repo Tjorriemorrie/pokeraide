@@ -3,6 +3,7 @@ from os import system
 
 import numpy as np
 from colorama import Fore, Style
+from terminalplot import plot
 
 
 class View:
@@ -85,6 +86,13 @@ class View:
 
             print('\n')
 
+        self.print_ev_history()
+
+    def print_ev_history(self):
+        ev_history = self.mc.ev_history[self.engine.s]
+        if not ev_history:
+            return
+        plot(range(len(ev_history)), ev_history, columns=50, rows=10)
 
     # def update_ev_change(self):
     #     """To establish how volatile the analysis still is"""

@@ -22,6 +22,7 @@ SITE_ACTION_MAP = {
     'big blimi': 'bb',
     'biq blinti': 'bb',
     'big blinti': 'bb',
+    'biq blin': 'bb',
     'fold': 'fold',
     'fol': 'fold',
     'folri': 'fold',

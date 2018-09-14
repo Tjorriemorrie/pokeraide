@@ -1,4 +1,4 @@
-from collections import deque, Counter
+from collections import deque, Counter, defaultdict
 from copy import deepcopy
 import hashlib
 import json
@@ -31,13 +31,11 @@ class MonteCarlo:
         # self.last_ev = 0
         # self.rolling_10 = deque(maxlen=10)
         # self.rolling_40 = deque(maxlen=40)
-        self.ev_history = []
-        self.ev_roc = 0
+        self.ev_history = {}
         self.time_start = None
         self.duration = None
         self.queue = None
         self.leaf_path = None
-        self.convergence = deque(maxlen=11)
 
         if not engine:
             # logger.info('engine not given, loading from file...')
@@ -68,6 +66,8 @@ class MonteCarlo:
         self.engine = engine
         self.hero = hero or self.engine.q[0][0]
         self.hero_pocket = self.engine.data[self.hero]['hand']
+        for s in self.engine.data:
+            self.ev_history[s] = deque(maxlen=50)
         # logger.info('HERO is at seat {} with {}'.format(self.hero, self.hero_pocket))
 
         self.watched = False
@@ -272,7 +272,6 @@ class MonteCarlo:
         if len(path) == 1:
             # logger.info('processing root for first time')
             self.process_node(e, self.tree[path[0]])
-            self.is_complete = False
             return
 
         leaf_node = self.tree[path[-1]]
@@ -305,10 +304,7 @@ class MonteCarlo:
                     processed_node = self.tree[processed_nid]
                     self.update_node(processed_node)
 
-        # input('$ check update')
-
-        # logger.info('all nodes in path processed')
-        self.is_complete = False
+        self.ev_history[self.engine.s].append(sum(a[1] for a in self.current_actions))
 
     def process_node(self, e, n):
         """Process node
@@ -747,17 +743,6 @@ class MonteCarlo:
 
         0/0
         input('$ check tree')
-
-    def update_ev_change(self):
-        """To establish how volatile the analysis still is"""
-        self.ev_history.append(sum(a[1] for a in self.current_actions))
-        self.ev_history = self.ev_history[:20]
-        change_oldest = sum(self.ev_history[10:])
-        change_latest = sum(self.ev_history[:10])
-        try:
-            self.ev_roc = 100 * change_latest / change_oldest
-        except ZeroDivisionError:
-            self.ev_roc = 0
 
 
 class MonteCarloError(Exception):

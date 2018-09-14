@@ -112,10 +112,9 @@ class Scraper(View):
                 # img = ImageGrab.grab((1920, 600, 3840, 2400))
                 # coinpoker
                 img = ImageGrab.grab((1760, 700, 3840, 2300))
-                if self.debug:
-                    img_file = os.path.join(self.PATH_DEBUG, '{}.png'.format(datetime.datetime.utcnow()))
-                    img.save(img_file)
-                    logger.debug('file saved locally to {}'.format(img_file))
+                img_file = os.path.join(self.PATH_DEBUG, '{}.png'.format(datetime.datetime.utcnow()))
+                img.save(img_file)
+                logger.debug('file saved locally to {}'.format(img_file))
             else:
                 img_path = self.files.pop(0)
                 logger.debug('loading file: {}'.format(img_path))
@@ -241,18 +240,22 @@ class Scraper(View):
         have varied too much from the current board by making the closes action"""
         logger.info('Running MC analysis')
 
-        if self.debug:
-            timeout = 0.1
+        # if self.debug:
+        #     timeout = 0.4
 
         if 'in' not in self.engine.data[self.site.HERO]['status']:
             time.sleep(0.2)
         else:
+            time_start = time.time()
             try:
                 self.mc.run(timeout)
             except EngineError as e:
                 logger.error(e)
                 self.mc.init_tree()
                 self.mc.run(timeout)
+            duration = time.time() - time_start
+            if duration > timeout * 2:
+                logger.warning(f'MC {timeout}s run took way longer at {duration}s')
         self.print()
 
     def wait_player_action(self):
@@ -260,7 +263,7 @@ class Scraper(View):
         actioned.
         First detect if the phase haven't moved on by checking board cards
         Secondly detect if current player isn't still thinking"""
-        self.run_mc(0.2)
+        self.run_mc(0.3)
 
         # todo check if gg in expected
         # todo then scan for foe pockets and exit
@@ -281,7 +284,7 @@ class Scraper(View):
                     logger.info(f'Engine caught up to {mapped_board}, but gg & sd handled separately')
                     return
                 self.check_player_action()
-                self.run_mc(0.2)
+                self.run_mc(0.3)
             self.board_moved = False
             # do not update last_thinking_phase as previous phase text still shows, giving wrong action
 
@@ -309,7 +312,7 @@ class Scraper(View):
                     except PlayerActionError as exc:
                         # happened when player did not move, but thinking already moved. wtf
                         return
-                    self.run_mc(0.2)
+                    self.run_mc(0.3)
                 if self.engine.phase == self.engine.PHASE_SHOWDOWN:
                     self.check_showdown_winner()
                 elif self.engine.phase == self.engine.PHASE_GG:
@@ -321,7 +324,7 @@ class Scraper(View):
                 except PlayerActionError as exc:
                     # happened when player did not move, but thinking already moved. wtf
                     return
-                self.run_mc(0.2)
+                self.run_mc(0.3)
 
         else:
             self.last_thinking_phase = self.engine.phase
@@ -334,7 +337,7 @@ class Scraper(View):
                     self.check_player_balance(current_s)
                     self.last_thinking_seat = current_s
                 # longer thinking time for hero
-                thinking_time = 1 if current_s == self.site.HERO else 0.5
+                thinking_time = 1 if current_s == self.site.HERO else 0.4
                 self.run_mc(thinking_time)
 
             # player (in engine) to act is not the one thinking on screen
@@ -351,7 +354,7 @@ class Scraper(View):
                         logger.warning(e)
                         # retry with new screen
                         return
-                    self.run_mc(0.2)
+                    self.run_mc(0.3)
 
     def check_player_action(self):
         """It is certain the expected player is not thinking, thus he finished
@@ -414,7 +417,6 @@ class Scraper(View):
                     logger.debug(f'tree recreated from closest node {node.tag}')
                     logger.debug(f'tree recreated from closest node {node.data}')
                     # increment traversed level
-                    self.mc.traversed_ceiling += 1
                 if not node.tag.endswith('_{}_{}'.format(s, phase)):
                     raise ValueError(f'Finished player {s} in {phase} not in subtree tag {node.tag}')
 
@@ -482,7 +484,7 @@ class Scraper(View):
             self.btn = self.btn_next
             return
 
-        logger.info('button moved: creating new game')
+        logger.info('button moved: creating new game...')
         self.btn = self.btn_next
 
         # there must be pockets for a game to have started
@@ -617,10 +619,11 @@ class Scraper(View):
         logger.info('finish the game')
 
         # todo BUG: game does get here in showdown
+        # todo BUG: cannot go to showdown, as the game has ended long time ago, has to finish it
         # if not self.engine.winner:
         #     raise GamePhaseError(f'Game does not have winner but in phase {self.engine.phase}')
-        if self.engine.phase == self.engine.PHASE_SHOWDOWN:
-            return self.check_showdown_winner()
+        # if self.engine.phase == self.engine.PHASE_SHOWDOWN:
+        #     return self.check_showdown_winner()
 
         self.waiting_for_new_game = True
         self.save_game()
@@ -658,12 +661,7 @@ class Scraper(View):
         logger.info(f'Winner of showdown is {winner}')
         cmd = ['gg', winner]
         self.engine.do(cmd)
-
-        self.waiting_for_new_game = True
-        self.save_game()
-        logger.info(f'Game over! Player {self.engine.winner} won!')
-        if self.debug:
-            raise Exception('Game over')
+        self.finish_it()
 
     def cards(self):
         """Generate cards for a site"""
