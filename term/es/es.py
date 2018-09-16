@@ -254,7 +254,8 @@ class ES:
         # pottie = A('percentiles', field='{}_btp'.format(agg_field), percents=[10, 30, 50, 70, 90])
         # sea.aggs.bucket('mesam', sample).metric('pottie', pottie).bucket('aksies', terms)
         sea.aggs.bucket('mesam', sample).bucket('aksies', terms)
-        hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[50])
+        # taking median does not work as the average hand is not the winning hand...
+        hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[75])
         sea.aggs.bucket('hs', sample).metric('hs_agg', hs_agg)
 
         sea = sea[:docs_size]
@@ -279,7 +280,7 @@ class ES:
         # logger.debug('cleaned phase_btps {}'.format(phase_btps))
 
         # hand strength
-        hs = res.aggregations['hs']['hs_agg']['values']['50.0']
+        hs = res.aggregations['hs']['hs_agg']['values']['75.0']
 
         # input('>> ')
         return {

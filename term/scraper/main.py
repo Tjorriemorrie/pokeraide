@@ -199,6 +199,9 @@ class Scraper(View):
         """Run application"""
         while True:
             self.take_screen()
+            if self.debug:
+                self.img.show()
+                time.sleep(3)
 
             if self.observe:
                 continue
