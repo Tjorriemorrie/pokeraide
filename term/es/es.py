@@ -109,7 +109,7 @@ class ES:
     def cut_hand_range(cls, stats):
         fold_perc = stats.get('f', 0.50)
         fold_cutoff = int(len(pocket_rankings) * (1 - fold_perc))
-        logger.debug('fold {}% cutting at {}'.format(fold_perc * 100, fold_cutoff))
+        # logger.debug('fold {}% cutting at {}'.format(fold_perc * 100, fold_cutoff))
 
         hand_range_keys = pocket_rankings.islice(stop=fold_cutoff)
         # logger.debug('hand range keys {}'.format(hand_range_keys))
@@ -140,7 +140,7 @@ class ES:
         query = {
             'bool': {
                 'should': [
-                    {'match': {'player': {'query': p['name'], 'boost': 3}}},
+                    {'match': {'player': {'query': p['name'], 'boost': 1}}},
                     # {'match': {'vs': {'query': engine.vs, 'boost': 2}}},
                     {'match': {'site': {'query': engine.site_name, 'boost': 1}}},
                 ]
@@ -286,7 +286,7 @@ class ES:
         return {
             'actions': phase_actions,
             # 'btps': phase_btps,
-            'hs': float(hs),
+            'hs': 1 - float(hs),
         }
 
     @classmethod

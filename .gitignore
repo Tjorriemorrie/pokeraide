@@ -79,3 +79,4 @@ src/node_modules/
 
 # profiling
 .prof
+profile*.html

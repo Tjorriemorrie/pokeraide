@@ -100,12 +100,13 @@ class Engine:
         self.q = None
         self.pe_equities = {}
 
+        hand_strength = PE.hand_strength(['__', '__'], self.board, self.rivals)
         for s, d in self.data.items():
             if 'in' not in d['status']:
                 continue
             self.data[s]['stats'] = ES.player_stats(self, s)
             self.players[s]['hand_range'] = ES.cut_hand_range(self.data[s]['stats'])
-            self.data[s]['strength'] = 0.25
+            self.data[s]['strength'] = 1 - hand_strength
 
     def save(self):
         """saves game. this state should be threadsafe"""
@@ -240,7 +241,8 @@ class Engine:
                 # for headsup the button posts SB
                 if self.vs == 2:
                     self.rotate()
-                self.do(['sb', self.sb_amt])
+                if self.sb_amt:
+                    self.do(['sb', self.sb_amt])
                 self.do(['bb', self.bb_amt])
                 # input('pot = {}'.format(self.current_pot))
                 phase_data['started'] = True
@@ -458,7 +460,7 @@ class Engine:
             })
             if int(action[1]) >= p['balance']:
                 action[0] = 'a'
-                logger.warn('allin during BB')
+                logger.warning('allin during BB')
             else:
                 d['contrib'] += action[1]
                 self.rotate()
@@ -467,6 +469,9 @@ class Engine:
         contribs_all = [pd['contrib'] for pd in self.data.values()]
         total_contribs = sum(contribs_all)
         max_contrib = max(contribs_all)
+        # fix if preflop and max < bb
+        if self.phase == self.PHASE_PREFLOP:
+            max_contrib = max(max_contrib, self.bb_amt)
         contrib_short = max_contrib - d['contrib']
         logger.debug('total_contrib={} and max_contrib={} and contrib_short={}'.format(
             total_contribs, max_contrib, contrib_short))
@@ -712,6 +717,12 @@ class Engine:
         The initialisation is done to help bridge the uknown. Taking all possible hands
         leads to shit decisions"""
 
+        # take strength if pocket known
+        if d['hand'] and d['hand'] != ['__', '__'] and d['hand'] != ['  ', '  ']:
+            strength = 1 - PE.hand_strength(d['hand'], self.board, self.rivals)
+            d['strength'] = strength
+            return
+
         # take hs from
         if d['stats']['hs']:
             d['strength'] = d['stats']['hs']
@@ -722,7 +733,6 @@ class Engine:
         if a in ['f', 'k', 'sb', 'bb']:
             logger.debug('no aggression faced')
             return
-
         stats = d['stats']['actions']
         logger.debug('player {} stats actions: {}'.format(s, stats))
 

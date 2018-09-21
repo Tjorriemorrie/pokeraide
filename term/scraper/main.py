@@ -6,12 +6,14 @@ import logging
 from operator import itemgetter
 import os
 from PIL import Image, ImageGrab
+from pyinstrument import Profiler
 from retrace import retry
 import time
 
 from engine.engine import Engine, EngineError
 from es.es import ES
 from mc.mc import MonteCarlo
+from pe.pe import PE
 from scraper.sites.base import SiteException, NoDealerButtonError, PocketError, ThinkingPlayerError, BalancesError, \
     BoardError, PlayerActionError, GamePhaseError, BalanceNotFound
 from scraper.sites.coinpoker.site import CoinPoker
@@ -22,6 +24,10 @@ from view import View
 
 
 logger = logging.getLogger(__name__)
+
+
+class TreeSubChildError(Exception):
+    """Problems with subtreeing tree"""
 
 
 class Scraper(View):
@@ -201,7 +207,7 @@ class Scraper(View):
             self.take_screen()
             if self.debug:
                 self.img.show()
-                time.sleep(3)
+                time.sleep(1)
 
             if self.observe:
                 continue
@@ -249,16 +255,23 @@ class Scraper(View):
         if 'in' not in self.engine.data[self.site.HERO]['status']:
             time.sleep(0.2)
         else:
-            time_start = time.time()
+            # profiler = Profiler()
+            # time_start = time.time()
             try:
+                # if self.debug:
+                #     profiler.start()
                 self.mc.run(timeout)
+                # if self.debug:
+                #     profiler.stop()
             except EngineError as e:
                 logger.error(e)
                 self.mc.init_tree()
                 self.mc.run(timeout)
-            duration = time.time() - time_start
-            if duration > timeout * 2:
-                logger.warning(f'MC {timeout}s run took way longer at {duration}s')
+            # duration = time.time() - time_start
+            # if not self.mc.queue.empty() and duration > timeout * 2:
+            #     with open(f'profile_{timeout}_{duration}.html', 'w') as f:
+            #         f.write(profiler.output_html())
+            #     logger.warning(f'MC {timeout}s run took way longer at {duration}s')
         self.print()
 
     def wait_player_action(self):
@@ -326,6 +339,8 @@ class Scraper(View):
                     self.check_player_action()
                 except PlayerActionError as exc:
                     # happened when player did not move, but thinking already moved. wtf
+                    # 2: caught thinking elapsed, but folded cards not yet removed
+                    logger.error(str(exc))
                     return
                 self.run_mc(0.3)
 
@@ -421,7 +436,8 @@ class Scraper(View):
                     logger.debug(f'tree recreated from closest node {node.data}')
                     # increment traversed level
                 if not node.tag.endswith('_{}_{}'.format(s, phase)):
-                    raise ValueError(f'Finished player {s} in {phase} not in subtree tag {node.tag}')
+                    logger.error(f'Finished player {s} in {phase} not in subtree tag {node.tag}')
+                    self.mc.init_tree()
 
         logger.debug('get next actions')
         self.expected = self.engine.available_actions()
@@ -433,6 +449,13 @@ class Scraper(View):
             s = i + 1
             if filter_seat and filter_seat != s:
                 continue
+
+            # could already have hand
+            # but cannot check here
+            # as it does not pick up when hero folded
+            # if hasattr(self, 'engine') and self.engine.data[s]['hand'] not in [['__', '__'], ['  ', '  ']]:
+            #     pockets[s] = self.engine.data[s]
+            #     continue
 
             # check for back side
             if self.site.parse_pocket_back(self.img, s):
@@ -509,14 +532,14 @@ class Scraper(View):
         contribs = self.site.parse_contribs(self.img)
 
         # seems there can be 1 blind, probably when blind fell out during prev round
-        if len(contribs) == 1:
-            logger.error('Found only 1 blind. Not supported.')
-            self.button_moved = False
-            return
+        # if len(contribs) == 1:
+        #     logger.error('Found only 1 blind. Not supported.')
+        #     self.button_moved = False
+        #     return
 
         # requires 2 blinds to get sb and bb
-        if len(contribs) < 2:
-            logger.debug(f'Game has not started as there are {len(contribs)} contribs right now')
+        if not len(contribs):
+            logger.debug('Game has not started as there are no contribs right now')
             time.sleep(0.1)
             return
 
@@ -564,11 +587,26 @@ class Scraper(View):
 
     def check_blinds(self, contribs):
         """SB and BB from ante structure. Since hero blocks the play, this should be always found."""
+        # skip SB in tournament fallout
         contribs_sorted = sorted([c for c in contribs.values() if c])
+        if len(contribs_sorted) == 1:
+            return None, contribs_sorted[0]
         sb, bb, *_ = contribs_sorted
         logger.info(f'Blinds found: SB {sb} and BB {bb}')
         if sb * 2 != bb:
-            logger.error('Smallest SB is not 1:2 to BB')
+            # revert to seating order
+            logger.warning('Smallest SB is not 1:2 to BB')
+            sb, bb, *_ = contribs.values()
+            # small blind is all-in
+            if sb < bb / 2:
+                s = list(contribs.keys())[0]
+                self.players[s]['balance'] = sb
+                sb = bb / 2
+            # small blind is all-in
+            if bb < sb * 2:
+                s = list(contribs.keys())[1]
+                self.players[s]['balance'] = bb
+                bb = sb * 2
         return sb, bb
 
     def pre_start(self, vs_players, contribs, ante):

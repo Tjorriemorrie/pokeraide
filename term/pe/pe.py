@@ -178,7 +178,7 @@ def pokereval_2(b1, b2, b3, b4, b5, c1, c2, c3, c4):
 def req_equities(board, pockets):
     """Makes request to service for PE"""
     logger.debug('requesting equities for board {} and pockets {}'.format(board, pockets))
-    res = requests.post('http://127.0.0.1:5000/', json={
+    res = requests.post('http://127.0.0.1:5657/', json={
         'pockets': pockets,
         'board': board,
     })

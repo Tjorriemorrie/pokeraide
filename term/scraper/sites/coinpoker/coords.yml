@@ -35,9 +35,12 @@
     # 90: get tail of border & sees 9 as 5
     # 100 cannot detect 'd' & sees 9 as 5
     # 110: sees 9 as g
+    # 115: sees 9 as 5
     # 120: sees fold as foch
+    # 125: sees 9 as 5
+    # 140
     # 150 no d
-    th_ocr: 115
+    th_ocr: 140
     shape: [220, 36]
     balances:
       1: [1313, 239]

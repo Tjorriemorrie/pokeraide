@@ -526,19 +526,16 @@ class CoinPoker(BaseSite):
         if balance == 'muck':
             # during river showdown, state is not gg for `check_showdown`, thus
             # thus check if player mucked, which means foe called
-            return ['c']
+            if 'check' in expected:
+                return ['k']
+            elif 'call' in expected:
+                return ['c']
+            else:
+                raise PlayerActionError('Could not call or check on muck?')
 
         if not pocket:
             # when foe has no cards, he folded, but check muck first
             return ['f']
-
-        # balance is None
-        # could not identify text or balance, maybe chat overlay
-        #
-        # cannot get action, chat overlay -> cannot wait here, assuming call
-        # to prevent: preflop action was obscured by chat, now scraped flop action which is wrong
-        if balance is None:
-            cmd = ['c']
 
         # balance is string with action taken
         if isinstance(balance, str):
@@ -583,59 +580,26 @@ class CoinPoker(BaseSite):
                 # could check for contrib, but can catch animation where contribs going to pot
                 cmd = ['c']
             elif balance == 'allin':
+                # todo check if contrib, otherwise allin was in previous action, and balance should be 0
                 cmd = ['a']
             if not cmd:
                 raise PlayerActionError(f'Could not infer what player {s} did with {balance}')
 
-        # balance is amount
         # balance changed
         if not cmd:
-            player_balance = engine.players[s]['balance']
-            balance_diff = player_balance - balance
-            logger.debug(f'balance diff = {balance_diff} (bal {player_balance} - scr {balance})')
-            if balance_diff < 0:
-                logger.error(f'Player {s} already received {balance_diff} winnings!')
-                balance_diff = 0
-
             contrib_diff = contrib - d['contrib']
             logger.debug(f'contrib diff= {contrib_diff} (scr {contrib} - trib {d["contrib"]})')
 
-            # adjust contrib for blinds
-            # eg1: had p7 15sb facing 90, thus diff/amt = 75
-            # might be only when the board changed, and contrib no longer there
-            # if phase == engine.PHASE_PREFLOP and not board_moved:
-            #     if d['is_SB']:
-            #         balance_diff -= engine.sb_amt
-            #         logger.debug(f'SB {engine.sb_amt} deducted from balance_diff: {balance_diff}')
-            #     if d['is_BB']:
-            #         balance_diff -= engine.bb_amt
-            #         logger.debug(f'BB {engine.bb_amt} deducted from balance_diff: {balance_diff}')
-
-            # action name is not validated in expected as for any chips moved it only uses bet
-
             # check
-            if not balance_diff and not contrib_diff:
-                logger.debug('No change in balance')
+            if not contrib_diff:
+                if 'k' not in expected:
+                    raise PlayerActionError(f'No contrib but also cannot check!')
+                logger.debug('No change in contrib and can check')
                 cmd = ['k']
-                if 'check' not in expected:
-                    # happens when player checked/folded and thinking went away too early
-                    raise PlayerActionError('No balance and contrib change but check not expected')
 
             # chips moved
             else:
-                # certain when both changes are equal (normally during phase)
-                if balance_diff == contrib_diff:
-                    logger.debug('amt = balance_diff')
-                    amt = balance_diff
-                # when table has gathered money
-                elif not contrib:
-                    logger.debug('amt = balance_diff + contrib_diff')
-                    amt = balance_diff + contrib_diff
-                # assume balance change is what was the bet
-                else:
-                    logger.debug('amt = balance_diff')
-                    amt = balance_diff
-                cmd = ['b', amt]
+                cmd = ['b', contrib_diff]
 
         logger.debug(f'Inferred player {s} did {cmd}')
         return cmd
