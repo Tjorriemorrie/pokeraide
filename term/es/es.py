@@ -140,52 +140,44 @@ class ES:
         query = {
             'bool': {
                 'should': [
-                    {'match': {'player': {'query': p['name'], 'boost': 1}}},
-                    # {'match': {'vs': {'query': engine.vs, 'boost': 2}}},
-                    {'match': {'site': {'query': engine.site_name, 'boost': 1}}},
+                    {'match': {'player': {'query': p['name'], 'boost': 1, '_name': 'player'}}},
+                    {'match': {'site': {'query': engine.site_name, 'boost': 0.5, '_name': 'site'}}},
                 ]
             }
         }
-        # logger.debug('basic query {}'.format(query))
 
-        # build function score
-        function_score = {
-            'function_score': {
-                'query': query,
-                'functions': [
-                    {'gauss': {'vs': {'origin': engine.vs, 'scale': 1, 'decay': 0.4}}},
-                    # {'gauss': {'created_at': {'origin': datetime.datetime.utcnow(), 'scale': '1d', 'decay': 0.99}}},
-                ]
-            }
-        }
-        # logger.debug('function score {}'.format(function_score))
+        scoring_functions = [
+            {'gauss': {'vs': {'origin': engine.vs, 'scale': 1, 'decay': 0.20}}},
+        ]
 
         # HISTORIC
         # add previous info
         phase_matching = []
         for phase in ['preflop', 'flop', 'turn', 'river']:
             for i, action_info in enumerate(d[phase]):
-                if i <= 1:
-                    function_score['function_score']['functions'].append(
-                        {'gauss': {'{}_{}_rvl'.format(phase, i+1): {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.66}}}
-                    )
-                phase_matching.append({'match': {'{}_{}'.format(phase, i+1): {'query': action_info['action'], 'boost': 2}}})
                 if i == 0:
-                    phase_matching.append({'match': {'{}_aggro'.format(phase): {'query': action_info['aggro'], 'boost': 2}}})
-        # logger.debug('Added {} action filters'.format(len(phase_matching)))
+                    phase_matching.append({'match': {f'{phase}_aggro': {'query': action_info['aggro'], 'boost': 4, '_name': f'{phase}_aggro'}}})
+                if i <= 1:
+                    street_name = f'{phase}_{i+1}'
+                    # phase_matching.append({'match': {f'{street_name}_rvl': {'query': action_info['rvl'], 'boost': 2, '_name': f'{street_name}_rvl'}}})
+                    scoring_functions.append(
+                        {'gauss': {f'{street_name}_rvl': {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.20}}}
+                    )
+                    # get latest street_index
+                    scoring_functions.append(
+                        {'gauss': {f'{street_name}_hs': {'origin': 1, 'scale': 0.10, 'decay': 0.10}}}
+                    )
+                phase_matching.append({'match': {f'{phase}_{i+1}': {'query': action_info['action'], 'boost': 10, '_name': f'{phase}_{i+1}'}}})
         query['bool']['should'].extend(phase_matching)
 
         # CURRENT
         # agg field
         agg_phase = engine.phase
         if not d[agg_phase]:
-            # logger.debug('player do not have data for this phase')
             agg_turn = 1
         elif len(d[agg_phase]) < 2:
-            # logger.debug('player do not have data for second act')
             agg_turn = 2
         else:
-            # logger.debug('player has acted twice, moving on to next phase')
             agg_turn = 1
             if agg_phase == engine.PHASE_PREFLOP:
                 agg_phase = engine.PHASE_FLOP
@@ -193,8 +185,7 @@ class ES:
                 agg_phase = engine.PHASE_TURN
             else:
                 agg_phase = engine.PHASE_RIVER
-        agg_field = '{}_{}'.format(agg_phase, agg_turn)
-        # logger.info('aggregate field = {}'.format(agg_field))
+        agg_field = f'{agg_phase}_{agg_turn}'
 
         # exclude blinds and
         if agg_field == 'preflop_1':
@@ -202,7 +193,6 @@ class ES:
                 {'term': {agg_field: 's'}},
                 {'term': {agg_field: 'l'}}
             ]
-            # logger.debug('excluding blinds for preflop first action')
 
         # get current sitwrap
         contribs_all = [pd['contrib'] for pd in engine.data.values()]
@@ -216,18 +206,13 @@ class ES:
             could_limp = True if engine.phase == engine.PHASE_PREFLOP and max_contrib == engine.bb_amt else False
             if not could_limp:
                 # facing aggro now?
-                query['bool']['should'].append({'match': {'{}_aggro'.format(agg_phase): {'query': True, 'boost': 2}}})
-                logger.debug('facing aggro: yes, contrib is short and not limping')
+                query['bool']['should'].append({'match': {f'{agg_phase}_aggro': {'query': True, 'boost': 4, '_name': f'{agg_phase}_aggro'}}})
                 # what is po now?
                 balance_left = p['balance'] - d['contrib']
                 pot_odds = min(balance_left, contrib_short) / max(1, (engine.pot + total_contribs))
-                function_score['function_score']['functions'].append(
-                    {
-                        'gauss': {'{}_po'.format(agg_field): {'origin': pot_odds, 'scale': 0.1, 'decay': 0.9}},
-                        'weight': 4,
-                    }
+                scoring_functions.append(
+                    {'gauss': {f'{agg_field}_po': {'origin': pot_odds, 'scale': 0.05, 'decay': 0.1}}}
                 )
-                logger.debug('added pot odds at {}'.format(pot_odds))
             else:
                 # logger.info('facing aggro: no, could limp: {}'.format(could_limp))
                 pass
@@ -237,9 +222,19 @@ class ES:
 
         # facing how many rivals? (currently, not historically)
         if agg_turn <= 2:
-            function_score['function_score']['functions'].append(
-                {'gauss': {'{}_rvl'.format(agg_field): {'origin': engine.rivals, 'scale': 1, 'decay': 0.6}}}
+            scoring_functions.append(
+                {'gauss': {f'{agg_field}_rvl': {'origin': engine.rivals, 'scale': 1, 'decay': 0.2}}}
             )
+
+        # build function score
+        function_score = {
+            'function_score': {
+                'query': query,
+                'functions': scoring_functions,
+                'score_mode': 'sum',
+                'boost_mode': 'sum',
+            }
+        }
 
         sea = GameAction.search()
         sea = sea.query(function_score)
@@ -254,8 +249,9 @@ class ES:
         # pottie = A('percentiles', field='{}_btp'.format(agg_field), percents=[10, 30, 50, 70, 90])
         # sea.aggs.bucket('mesam', sample).metric('pottie', pottie).bucket('aksies', terms)
         sea.aggs.bucket('mesam', sample).bucket('aksies', terms)
-        # taking median does not work as the average hand is not the winning hand...
-        hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[75])
+
+        percentile = 50
+        hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[percentile])
         sea.aggs.bucket('hs', sample).metric('hs_agg', hs_agg)
 
         sea = sea[:docs_size]
@@ -280,14 +276,93 @@ class ES:
         # logger.debug('cleaned phase_btps {}'.format(phase_btps))
 
         # hand strength
-        hs = res.aggregations['hs']['hs_agg']['values']['75.0']
+        hs = res.aggregations['hs']['hs_agg']['values'][f'{percentile}.0']
 
-        # input('>> ')
         return {
             'actions': phase_actions,
-            # 'btps': phase_btps,
             'hs': 1 - float(hs),
         }
+
+    @classmethod
+    def showdown_hs(cls, engine, seat, docs_size=0, percentile=50):
+        """Get the stats for the history of the seat."""
+        p = engine.players[seat]
+        d = engine.data[seat]
+
+        # build up the basic query
+        query = {
+            'bool': {
+                'should': [
+                    {'match': {'player': {'query': p['name'], 'boost': 1, '_name': 'player'}}},
+                    {'match': {'site': {'query': engine.site_name, 'boost': 0.5, '_name': 'site'}}},
+                    {'match': {'vs': {'query': engine.vs, 'boost': 1.5, '_name': 'vs'}}},
+                ],
+            }
+        }
+
+        scoring_functions = [
+            {'gauss': {'vs': {'origin': engine.vs, 'scale': 1, 'decay': 0.20}}},
+            # {'gauss': {'created_at': {'origin': datetime.datetime.utcnow(), 'scale': '1d', 'decay': 0.99}}},
+        ]
+
+        # HISTORIC
+        # add previous info
+        phase_matching = []
+        for phase in ['preflop', 'flop', 'turn', 'river']:
+            for i, action_info in enumerate(d[phase]):
+                if i == 0:
+                    phase_matching.append({'match': {f'{phase}_aggro': {'query': action_info['aggro'], 'boost': 4, '_name': f'{phase}_aggro'}}})
+                if i <= 1:
+                    street_name = f'{phase}_{i+1}'
+                    # phase_matching.append({'match': {f'{street_name}_rvl': {'query': action_info['rvl'], 'boost': 2, '_name': f'{street_name}_rvl'}}})
+                    # scoring_functions.append(
+                    #     {'gauss': {f'{street_name}_rvl': {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.20}}}
+                    # )
+                    # get latest street_index
+                    phase_matching.append({'exists': {'field': f'{street_name}_hs', '_name': f'exists_{street_name}_hs'}})
+                    # scoring_functions.append(
+                    #     {'linear': {f'{street_name}_hs': {'origin': 1, 'scale': 0.01, 'decay': 0.01}}}
+                    # )
+                phase_matching.append({'match': {f'{phase}_{i+1}': {'query': action_info['action'], 'boost': 10, '_name': f'{phase}_{i+1}'}}})
+        query['bool']['should'].extend(phase_matching)
+
+        # add hs function score
+        # function_score['function_score']['functions'].append(
+        #     {'linear': {f'{street_name}_hs': {'origin': 1, 'scale': 0.01, 'decay': 0.01}}, 'weight': 3},
+        # )
+
+        # build function score
+        function_score = {
+            'function_score': {
+                'query': query,
+                'functions': scoring_functions,
+                'score_mode': 'sum',
+                'boost_mode': 'sum',
+            }
+        }
+
+        sea = GameAction.search()
+        sea = sea.query(function_score)
+        sea = sea.sort('_score', {'created_at': 'desc'})
+
+        # establish which doc field is to be aggregated on for this player
+        docs_per_shard = (cls.SAMPLE_SIZE / 10) / active_primary_shards
+
+        # CURRENT
+        # get latest field
+        sample = A('sampler', shard_size=docs_per_shard)
+        hs_agg = A('percentiles', field=f'{street_name}_hs', percents=[percentile])
+        sea.aggs.bucket('hs', sample).metric('hs_agg', hs_agg)
+
+        sea = sea[:docs_size]
+        res = sea.execute()
+        assert res._shards['failed'] == 0
+        if docs_size:
+            return res
+
+        # hand strength
+        hs = res.aggregations['hs']['hs_agg']['values'][f'{percentile}.0']
+        return float(hs) if hs != 'NaN' else 0.50
 
     @classmethod
     def analyze_stats(cls, sea, seat, res=None):

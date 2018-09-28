@@ -180,7 +180,7 @@ class CoinPoker(BaseSite):
             if self.debug:
                 img_name.save(os.path.join(self.PWD, 'name_{}.png'.format(s)))
             name = self.ocr_text(img_name, lang=self.LANG)
-            name = re.sub('[^ a-zA-Z0-9]', '', name).strip()
+            name = re.sub('[^a-zA-Z0-9]', '', name).strip()
             # name = re.sub('( i| 1)$', '', name)
             logger.debug(f'Player {s} name: {name}')
             self.__names[s].append(name)
@@ -322,8 +322,7 @@ class CoinPoker(BaseSite):
         raise ThinkingPlayerError('No player coord for thinking at {loc}')
 
     def parse_board(self, img):
-        """Parses the cards on the board. Parse it one by one.
-        """
+        """Parses the cards on the board. Parse it one by one."""
         coords = self.coords['board']
         logger.debug(f'Parsing board with coords {coords}')
         board_card_shape = coords['card_shape']
@@ -518,10 +517,14 @@ class CoinPoker(BaseSite):
         sb, bb = structures[ante]
         logger.info('Structure for ante {} is SB {} and BB {}'.format(ante, sb, bb))
 
-    def infer_player_action(self, img, s, phase, pocket, contrib, engine, current_pot, board_moved, expected):
+    def infer_player_action(self, img, s, phase, pocket, contrib, engine, current_pot, board_moved, expected, expected_text=False):
         cmd = None
         d = engine.data[s]
         balance = self.parse_balances(img, s, True)
+
+        # raise if expected text
+        if not balance and expected_text:
+            raise PlayerActionError('Expected text for action but found none')
 
         if balance == 'muck':
             # during river showdown, state is not gg for `check_showdown`, thus
@@ -592,14 +595,20 @@ class CoinPoker(BaseSite):
 
             # check
             if not contrib_diff:
-                if 'k' not in expected:
-                    raise PlayerActionError(f'No contrib but also cannot check!')
-                logger.debug('No change in contrib and can check')
                 cmd = ['k']
+                if 'k' not in expected:
+                    # happens after new street and text is gone (and contrib collected)
+                    logger.info(f'No contrib but also cannot check! Changed to call.')
+                    cmd = ['c']
+                logger.debug('No change in contrib and can check')
 
             # chips moved
             else:
                 cmd = ['b', contrib_diff]
+                # check if bet is not the winnings
+                pot, total = self.parse_pot_and_total(img)
+                if not total and not pot:
+                    cmd = ['k'] if 'check' in expected else ['c']
 
         logger.debug(f'Inferred player {s} did {cmd}')
         return cmd

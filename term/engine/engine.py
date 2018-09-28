@@ -13,6 +13,19 @@ from pe.pe import PE
 logger = logging.getLogger(__name__)
 
 
+ACTIONS_TO_ABBR = {
+    'small blind': 'sb',
+    'big blind': 'bb',
+    'muck': 'm',
+    'fold': 'f',
+    'call': 'c',
+    'check': 'k',
+    'bet': 'b',
+    'raise': 'r',
+    'allin': 'a',
+}
+
+
 class Engine:
     '''
     The engine requires various properties for the state
@@ -473,8 +486,8 @@ class Engine:
         if self.phase == self.PHASE_PREFLOP:
             max_contrib = max(max_contrib, self.bb_amt)
         contrib_short = max_contrib - d['contrib']
-        logger.debug('total_contrib={} and max_contrib={} and contrib_short={}'.format(
-            total_contribs, max_contrib, contrib_short))
+        # logger.debug('total_contrib={} and max_contrib={} and contrib_short={}'.format(
+        #     total_contribs, max_contrib, contrib_short))
 
         # facing_aggro if contrib_short AND not limping during preflop
         could_limp = True if self.phase == self.PHASE_PREFLOP and max_contrib == self.bb_amt else False

@@ -264,6 +264,8 @@ class Scraper(View):
                 # if self.debug:
                 #     profiler.stop()
             except EngineError as e:
+                # if self.debug:
+                #     profiler.stop()
                 logger.error(e)
                 self.mc.init_tree()
                 self.mc.run(timeout)
@@ -324,7 +326,7 @@ class Scraper(View):
                 while self.engine.phase not in [self.engine.PHASE_SHOWDOWN, self.engine.PHASE_GG] \
                         and self.engine.phase == self.last_thinking_phase:
                     try:
-                        self.check_player_action()
+                        self.check_player_action(expect_text=True)
                     except PlayerActionError as exc:
                         # happened when player did not move, but thinking already moved. wtf
                         return
@@ -336,11 +338,11 @@ class Scraper(View):
             # else we can check for action considering we are in same phase
             elif self.last_thinking_phase == self.engine.phase:
                 try:
-                    self.check_player_action()
+                    self.check_player_action(expect_text=True)
                 except PlayerActionError as exc:
                     # happened when player did not move, but thinking already moved. wtf
                     # 2: caught thinking elapsed, but folded cards not yet removed
-                    logger.error(str(exc))
+                    logger.info(str(exc))
                     return
                 self.run_mc(0.3)
 
@@ -374,7 +376,7 @@ class Scraper(View):
                         return
                     self.run_mc(0.3)
 
-    def check_player_action(self):
+    def check_player_action(self, expect_text=False):
         """It is certain the expected player is not thinking, thus he finished
         his turn: check the player action.
         Based on expected moves we can infer what he did
@@ -398,7 +400,8 @@ class Scraper(View):
         pocket = self.check_players_pockets(s)
         contrib = self.site.parse_contribs(self.img, s)
         cmd = self.site.infer_player_action(self.img, s, phase, pocket, contrib or 0, self.engine,
-                                            self.engine.current_pot, self.board_moved, self.expected)
+                                            self.engine.current_pot, self.board_moved, self.expected,
+                                            expect_text)
 
         # do action, rotate, and get next actions
         logger.debug(f'parsed action {cmd}')
@@ -588,10 +591,13 @@ class Scraper(View):
     def check_blinds(self, contribs):
         """SB and BB from ante structure. Since hero blocks the play, this should be always found."""
         # skip SB in tournament fallout
+        if len(contribs) == 3 and contribs.get(5) == 7:
+            logger.info('Fixed player 5 wrong contrib of 7')
+            del contribs[5]
         contribs_sorted = sorted([c for c in contribs.values() if c])
         if len(contribs_sorted) == 1:
             return None, contribs_sorted[0]
-        sb, bb, *_ = contribs_sorted
+        sb, bb, *others = contribs_sorted
         logger.info(f'Blinds found: SB {sb} and BB {bb}')
         if sb * 2 != bb:
             # revert to seating order
@@ -670,7 +676,7 @@ class Scraper(View):
         self.save_game()
         logger.info(f'Game over! Player {self.engine.winner} won!')
         if self.debug:
-            raise Exception('Game over')
+            raise Exception(f'Game over: {self.engine.winner} won!')
 
     def check_showdown_winner(self):
         """Winner can be identified by no pot amounts but one contrib"""
