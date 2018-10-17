@@ -113,13 +113,13 @@ class Engine:
         self.q = None
         self.pe_equities = {}
 
-        hand_strength = PE.hand_strength(['__', '__'], self.board, self.rivals)
+        # hand_strength = PE.hand_strength(['__', '__'], self.board, self.rivals)
         for s, d in self.data.items():
             if 'in' not in d['status']:
                 continue
             self.data[s]['stats'] = ES.player_stats(self, s)
             self.players[s]['hand_range'] = ES.cut_hand_range(self.data[s]['stats'])
-            self.data[s]['strength'] = 1 - hand_strength
+            self.data[s]['strength'] = 0.20
 
     def save(self):
         """saves game. this state should be threadsafe"""
@@ -731,26 +731,27 @@ class Engine:
         leads to shit decisions"""
 
         # take strength if pocket known
-        if d['hand'] and d['hand'] != ['__', '__'] and d['hand'] != ['  ', '  ']:
-            strength = 1 - PE.hand_strength(d['hand'], self.board, self.rivals)
-            d['strength'] = strength
-            return
-
-        # take hs from
-        if d['stats']['hs']:
-            d['strength'] = d['stats']['hs']
-            return
+        # if d['hand'] and d['hand'] != ['__', '__'] and d['hand'] != ['  ', '  ']:
+        #     strength = 1 - PE.hand_strength(d['hand'], self.board, self.rivals)
+        #     d['strength'] = strength
+        #     return
+        #
+        # # take hs from
+        # if d['stats']['hs']:
+        #     d['strength'] = d['stats']['hs']
+        #     return
 
         logger.info('adjusting strength for action {}'.format(a))
 
         if a in ['f', 'k', 'sb', 'bb']:
             logger.debug('no aggression faced')
             return
+
         stats = d['stats']['actions']
         logger.debug('player {} stats actions: {}'.format(s, stats))
 
         dist = ES.dist_player_stats(stats)
-        logger.debug('player {} dist: {}'.format(s, dist))
+        logger.debug(f'player {s} dist: {dist}')
 
         # update strength to fold limit
         # 1111111111
@@ -769,21 +770,21 @@ class Engine:
         for o in ['c', 'b', 'r', 'a']:
             if o == a:
                 action_found = True
-                logger.debug('action {} found'.format(o))
+                # logger.debug('action {} found'.format(o))
             if not action_found:
-                logger.debug('action {} not found yet'.format(a))
+                # logger.debug('action {} not found yet'.format(a))
                 continue
             dist_vals = [k for k, v in dist.items() if v == o]
-            logger.debug('dist_vals {}'.format(dist_vals))
+            # logger.debug('dist_vals {}'.format(dist_vals))
             if not dist_vals:
-                logger.debug('no dist_vals...')
+                # logger.debug('no dist_vals...')
                 continue
             lower_bound = min(dist_vals)
-            logger.debug('lower bound = {} (with {})'.format(lower_bound, o))
+            # logger.debug('lower bound = {} (with {})'.format(lower_bound, o))
             break
 
         new_strength = d['strength'] * (1 - lower_bound)
-        logger.debug('new strength = {} (old {} * {})'.format(new_strength, d['strength'], (1 - lower_bound)))
+        # logger.debug('new strength = {} (old {} * {})'.format(new_strength, d['strength'], (1 - lower_bound)))
         d['strength'] = new_strength
 
     @property

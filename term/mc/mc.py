@@ -362,8 +362,8 @@ class MonteCarlo:
                     ev = 0
                 else:
                     winnings, losses = self.net(e)
-                    # equities = PE.showdown_equities(e)
-                    equities = self.get_showdown_equities(e)
+                    equities = PE.showdown_equities(e)
+                    # equities = self.get_showdown_equities(e)
                     ev_pos = winnings * equities[self.hero]
                     # logger.debug('ev_pos = {} from winnings {} * eq {}'.format(ev_pos, winnings, equities[self.hero]))
                     ev_neg = losses * (1 - equities[self.hero])

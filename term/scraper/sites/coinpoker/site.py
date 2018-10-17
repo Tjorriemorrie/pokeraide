@@ -18,6 +18,7 @@ SITE_ACTION_MAP = {
     'small blind': 'sb',
     'small blimi': 'sb',
     'srriall blinti': 'sb',
+    'small blinci': 'sb',
     'big blind': 'bb',
     'big blimi': 'bb',
     'biq blinti': 'bb',
@@ -38,6 +39,7 @@ SITE_ACTION_MAP = {
     'allin': 'allin',
     'sit out': 'sit out',
     'sit oiit': 'sit out',
+    'sit oiii': 'sit out',
 }
 
 

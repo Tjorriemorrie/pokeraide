@@ -147,7 +147,7 @@ class ES:
         }
 
         scoring_functions = [
-            {'gauss': {'vs': {'origin': engine.vs, 'scale': 1, 'decay': 0.20}}},
+            {'linear': {'vs': {'origin': engine.vs, 'scale': 1, 'decay': 0.20}}},
         ]
 
         # HISTORIC
@@ -161,12 +161,12 @@ class ES:
                     street_name = f'{phase}_{i+1}'
                     # phase_matching.append({'match': {f'{street_name}_rvl': {'query': action_info['rvl'], 'boost': 2, '_name': f'{street_name}_rvl'}}})
                     scoring_functions.append(
-                        {'gauss': {f'{street_name}_rvl': {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.20}}}
+                        {'linear': {f'{street_name}_rvl': {'origin': action_info['rvl'], 'scale': 1, 'decay': 0.20}}}
                     )
                     # get latest street_index
-                    scoring_functions.append(
-                        {'gauss': {f'{street_name}_hs': {'origin': 1, 'scale': 0.10, 'decay': 0.10}}}
-                    )
+                    # scoring_functions.append(
+                    #     {'linear': {f'{street_name}_hs': {'origin': 1, 'scale': 0.10, 'decay': 0.10}}}
+                    # )
                 phase_matching.append({'match': {f'{phase}_{i+1}': {'query': action_info['action'], 'boost': 10, '_name': f'{phase}_{i+1}'}}})
         query['bool']['should'].extend(phase_matching)
 
@@ -223,7 +223,7 @@ class ES:
         # facing how many rivals? (currently, not historically)
         if agg_turn <= 2:
             scoring_functions.append(
-                {'gauss': {f'{agg_field}_rvl': {'origin': engine.rivals, 'scale': 1, 'decay': 0.2}}}
+                {'linear': {f'{agg_field}_rvl': {'origin': engine.rivals, 'scale': 1, 'decay': 0.2}}}
             )
 
         # build function score
@@ -250,9 +250,9 @@ class ES:
         # sea.aggs.bucket('mesam', sample).metric('pottie', pottie).bucket('aksies', terms)
         sea.aggs.bucket('mesam', sample).bucket('aksies', terms)
 
-        percentile = 50
-        hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[percentile])
-        sea.aggs.bucket('hs', sample).metric('hs_agg', hs_agg)
+        # percentile = 50
+        # hs_agg = A('percentiles', field='{}_hs'.format(agg_field), percents=[percentile])
+        # sea.aggs.bucket('hs', sample).metric('hs_agg', hs_agg)
 
         sea = sea[:docs_size]
         res = sea.execute()
@@ -276,11 +276,11 @@ class ES:
         # logger.debug('cleaned phase_btps {}'.format(phase_btps))
 
         # hand strength
-        hs = res.aggregations['hs']['hs_agg']['values'][f'{percentile}.0']
+        # hs = res.aggregations['hs']['hs_agg']['values'][f'{percentile}.0']
 
         return {
             'actions': phase_actions,
-            'hs': 1 - float(hs),
+            # 'hs': 1 - float(hs),
         }
 
     @classmethod
@@ -438,25 +438,24 @@ class ES:
                 dist[p] = o
                 p += max(0.01, stats[o])
                 dist[p - 0.001] = o
-        # if len(dist) == 1:
         dist[1] = 'a'
-        logger.info('dist = {}'.format(dist))
+        logger.info(f'dist = {dist}')
 
-        logger.debug('strength? {}'.format(strength))
+        logger.debug(f'strength? {strength}')
         if strength is False:
             return dist
 
         r = ''
-        logger.debug('dist = {}'.format(type(dist)))
+        logger.debug(f'dist = {type(dist)}')
         for _ in range(20):
             p = _ * 5 / 100
             i_pos = dist.bisect_key_left(p)
-            logger.debug('i_pos {} / {}'.format(i_pos, len(dist)))
+            logger.debug(f'i_pos {i_pos} / {len(dist)}')
             k = dist.iloc[i_pos]
             v = dist[k]
             r += v.upper() if (1 - strength) <= p <= 1 else v.lower()
-            logger.debug('bisected {} from {} at {}%'.format(v, k, r))
-        logger.debug('dist_stats {}'.format(r))
+            logger.debug(f'bisected {v} from {k} at {r}%')
+        logger.debug(f'dist_stats {r}')
         return r
 
     @classmethod

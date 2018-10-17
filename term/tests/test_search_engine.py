@@ -66,15 +66,13 @@ class TestSearchEngine:
         stats = ES.player_stats(e, e.s)
         # hs = res.aggregations['hs']['hs_agg']['values']['50.0']
         assert len(stats['actions']) >= 4
-        assert stats['hs'] is not None
-        assert 0 < stats['hs'] < 100
 
-        res = ES.player_stats(e, e.s, 100)
-        hits = res.hits.hits
-        assert res.aggregations['hs'].doc_count >= 85
-        hs = res.aggregations['hs']['hs_agg']['values']['50.0']
-        assert hs is not None
-        assert 0 < hs < 100
+        # res = ES.player_stats(e, e.s, 100)
+        # hits = res.hits.hits
+        # assert res.aggregations['hs'].doc_count >= 85
+        # hs = res.aggregations['hs']['hs_agg']['values']['50.0']
+        # assert hs is not None
+        # assert 0 < hs < 100
 
     def test_showdown_hs(self):
         e = Engine(
